@@ -1,17 +1,17 @@
 # app/schemas.py
 # Pydantic schemas for request/response validation.
 
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, RootModel, EmailStr
 from typing import List, Optional
 
 
 class SignupIn(BaseModel):
     username: str
     password: str
-
+    email: EmailStr
 
 class LoginIn(BaseModel):
-    username: str
+    email: str
     password: str
 
 

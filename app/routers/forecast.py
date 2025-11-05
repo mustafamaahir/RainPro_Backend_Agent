@@ -27,7 +27,7 @@ def post_daily_forecast(items: schemas.ForecastList, db: Session = Depends(get_d
     The endpoint appends a new Forecast row (forecast_type='daily') with forecast_data stored as JSON text.
     Agent is unauthenticated and responsible for providing the correct 7-day forecast values.
     """
-    items_list = items.__root__
+    items_list = items.root
     if not items_list or not isinstance(items_list, list):
         raise HTTPException(status_code=400, detail="Empty or invalid forecast list")
 
@@ -103,7 +103,7 @@ def post_monthly_forecast(items: schemas.ForecastList, db: Session = Depends(get
     Agent posts a monthly forecast list (expected 3 items for next 3 months).
     Appends a new Forecast row with forecast_type='monthly'.
     """
-    items_list = items.__root__
+    items_list = items.root
     if not items_list or not isinstance(items_list, list):
         raise HTTPException(status_code=400, detail="Empty or invalid forecast list")
 
