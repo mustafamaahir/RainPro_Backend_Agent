@@ -5,26 +5,42 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+# ---- Path Setup ----
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(BASE_DIR)
 DATA_DIR = os.path.join(PROJECT_DIR, "data")
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
 
-DATABASE_URL = "sqlite:///" + os.path.join(DATA_DIR, "sail.db")
+# Ensure ./data directory exists
+os.makedirs(DATA_DIR, exist_ok=True)
 
-# Engine with check_same_thread False for sqlite + FastAPI
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# SQLite database path (always consistent)
+DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'sail.db')}"
 
-# Session factory
+# ---- Engine Setup ----
+# check_same_thread=False → allows use of the same connection across threads
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    echo=False  # Set to True if you want SQL logs
+)
+
+# ---- Session Setup ----
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
-# Base class for models
+# ---- Base Class for Models ----
 Base = declarative_base()
 
 
+def get_db():
+    """Yields a new SQLAlchemy database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 def init_db():
-    """Create tables (imports models to register metadata)."""
-    # Import models to ensure table metadata is registered
+    """Initializes database tables (imports models to register metadata)."""
     import app.models as models  # noqa: F401
     Base.metadata.create_all(bind=engine)
