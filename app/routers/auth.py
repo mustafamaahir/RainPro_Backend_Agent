@@ -26,7 +26,7 @@ def signup(payload: schemas.SignupIn, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    user = models.User(username=payload.username, password=payload.password, email = payload.email)
+    user = models.User(username=payload.username, password=payload.password, email=payload.email)
     db.add(user)
     db.commit()
     db.refresh(user)

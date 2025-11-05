@@ -41,6 +41,24 @@ def get_db():
 
 
 def init_db():
-    """Initializes database tables (imports models to register metadata)."""
+    """Initializes or rebuilds database tables (used for Render SQLite schema sync)."""
     import app.models as models  # noqa: F401
+    from sqlalchemy import inspect
+
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+
+    # Check if database exists and has outdated schema
+    if "users" in tables:
+        columns = [col["name"] for col in inspector.get_columns("users")]
+        if "email" not in columns:
+            print("⚠️ Detected outdated schema (missing email). Rebuilding database...")
+            Base.metadata.drop_all(bind=engine)
+            Base.metadata.create_all(bind=engine)
+            print("✅ Database successfully rebuilt with latest schema.")
+            return
+
+    # Create tables if not existing
     Base.metadata.create_all(bind=engine)
+    print("✅ Database initialized successfully.")
+

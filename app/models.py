@@ -2,7 +2,6 @@
 # SQLAlchemy ORM models: User, UserQuery, Forecast
 
 from sqlalchemy import Column, Integer, String, DateTime, Text
-from sqlalchemy import Float, Date
 from datetime import datetime
 from app.database import Base
 
@@ -10,6 +9,7 @@ from app.database import Base
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(120), unique=True, nullable=False, index=True)
     username = Column(String(64), unique=True, nullable=False, index=True)
     password = Column(String(256), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
