@@ -13,14 +13,26 @@ DATA_DIR = os.path.join(PROJECT_DIR, "data")
 # Ensure ./data directory exists
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# SQLite database path (always consistent)
-DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'sail.db')}"
+# ---- Database URL Selection ----
+# Prefer DATABASE_URL from environment (Render/PostgreSQL)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Fallback to local SQLite when DATABASE_URL is not set
+if not DATABASE_URL:
+    DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'sail.db')}"
+    connect_args = {"check_same_thread": False}
+else:
+    # For PostgreSQL, Render gives URL in the format:
+    # postgres://user:pass@host:port/dbname
+    # SQLAlchemy prefers postgresql://
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    connect_args = {}
 
 # ---- Engine Setup ----
-# check_same_thread=False → allows use of the same connection across threads
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},
+    connect_args=connect_args,
     echo=False  # Set to True if you want SQL logs
 )
 
@@ -30,7 +42,6 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 # ---- Base Class for Models ----
 Base = declarative_base()
 
-
 def get_db():
     """Yields a new SQLAlchemy database session."""
     db = SessionLocal()
@@ -38,7 +49,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
 
 def init_db():
     """Initializes or rebuilds database tables (used for Render SQLite schema sync)."""
