@@ -85,7 +85,7 @@ def seed_dummy_data():
         db.close()
 
 
-@app.get("/status")
+@app.get("/status", methods = ["GET", "HEAD"])
 def status():
     """Health check endpoint."""
     return {"status": "ok", "message": "Rainfall Project SAIL API is running."}
