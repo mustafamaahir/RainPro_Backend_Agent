@@ -56,13 +56,13 @@ def seed_dummy_data():
                 {"date": "2021-10-13", "rainfall": 12},
                 {"date": "2021-10-14", "rainfall": 9},
                 {"date": "2021-10-15", "rainfall": 18},
-                {"date": "2021-10-16", "rainfall": 6},
+                {"date": "2021-10-16", "rainfall": 6}
             ]
 
             dummy_monthly = [
                 {"date": "2021-10-10", "rainfall": 14},
                 {"date": "2021-10-11", "rainfall": 7},
-                {"date": "2021-10-12", "rainfall": 20},
+                {"date": "2021-10-12", "rainfall": 20}
             ]
 
             db.add_all([
