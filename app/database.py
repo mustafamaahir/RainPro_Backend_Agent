@@ -4,6 +4,8 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+import app.models as models  # noqa: F401
+from sqlalchemy import inspect
 
 # ---- Path Setup ----
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -52,9 +54,6 @@ def get_db():
 
 def init_db():
     """Initializes or rebuilds database tables (used for Render SQLite schema sync)."""
-    import app.models as models  # noqa: F401
-    from sqlalchemy import inspect
-
     inspector = inspect(engine)
     tables = inspector.get_table_names()
 
