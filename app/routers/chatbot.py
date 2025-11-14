@@ -57,17 +57,17 @@ def get_latest_response(user_id: int = Query(...), db: Session = Depends(get_db)
     Frontend fetches the latest query and its response_text for a given user_id.
     Returns text fields in JSON format, including a status flag.
     """
-    # 1. Ensure user exists
+    # Ensure user exists
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # 2. Fetch the latest query for that user
+    # Fetch the latest query for that user
     latest = db.query(models.UserQuery).filter(
         models.UserQuery.user_id == user_id
     ).order_by(models.UserQuery.created_at.desc()).first()
 
-    # 3. Handle case: No queries found for the user
+    # Handle case: No queries found for the user
     if not latest:
         return {
             "query_id": None,
@@ -78,11 +78,11 @@ def get_latest_response(user_id: int = Query(...), db: Session = Depends(get_db)
             "is_completed": True # No query means nothing is processing
         }
 
-    # 4. Determine status
+    # Determine status
     # The response is complete if response_text is present (i.e., not NULL)
     is_completed = latest.response_text is not None
 
-    # 5. Return structured response
+    # Return structured response
     return {
         "query_id": latest.id,
         "query_text": latest.query_text,

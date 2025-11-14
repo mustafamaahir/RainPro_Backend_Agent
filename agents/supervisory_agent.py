@@ -1,17 +1,15 @@
-# graph/agents/supervisory_agent.py (Modified)
-
 import requests
 import json
 import logging
-# No need to import db, models, or Session here!
+
 
 logger = logging.getLogger(__name__)
 
 # Define the local URL where the FastAPI app is running
-# NOTE: Replace with your actual base URL (e.g., http://localhost:8000)
+# NOTE: Replace with the actual base URL
 BASE_API_URL = "http://localhost:8000" 
 
-def supervisory_agent_http_post(state: dict, config: dict):
+def supervisory_agent(state: dict, config: dict):
     """
     Supervisory agent that POSTs the final result to the FastAPI endpoint 
     for database persistence, running asynchronously from the main thread.

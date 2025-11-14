@@ -1,34 +1,52 @@
-# app/routers/user_input.py (Revised)
-
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks # 👈 NEW IMPORT
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app import models, schemas
 from datetime import datetime
-
-# --- NEW IMPORTS ---
-# Assuming your graph is compiled in graph/rainfall_graph.py
-from graph.rainfall_graph import build_rainfall_graph, AgentState 
-# -------------------
+from agents.rainfall_graph import build_rainfall_graph, AgentState 
+import logging
 
 router = APIRouter(prefix="", tags=["user_input"])
 
-# --- NEW: Graph Initialization and Configuration ---
-# 1. Load the compiled graph once
+# Graph Initialization and Configuration (Remains the same)
 RAIN_GRAPH = build_rainfall_graph()
-
-# 2. Define standard configuration parameters needed by agents (e.g., model paths)
-# IMPORTANT: Replace these with your actual model/scaler objects or file loaders if needed.
 MODEL_CONFIG = {
-    # These strings should typically be loaded objects (e.g., joblib.load, tf.keras.models.load_model)
     "models\\scaler_daily.pkl": "RainSight\\models\\scaler_daily.pkl", 
     "models\\scaler_monthly.pkl": "RainSight\\models\\scaler_monthly.pkl",
     "models\\rainfall_daily_predictor.h5": "RainSight\\models\\rainfall_daily_predictor.h5",
     "models\\rainfall_monthly_predictor.h5": "RainSight\\models\\rainfall_monthly_predictor.h5"
-    # Add any other paths/objects required by preprocessing_agent or model_prediction_agent
 }
-# ---------------------------------------------------
 
+# Background Function to Run the Graph
+def run_agent_workflow(
+    initial_state: AgentState, 
+    graph_config_data: dict
+):
+    """
+    Executes the LangGraph workflow. This function runs in the background.
+    It must open its own DB session since the main request's session is closed.
+    """
+    db = None
+    try:
+        # Open a new dedicated DB session for the background task
+        db = SessionLocal()
+        
+        # Update the config with the new session
+        graph_config = {"configurable": {**graph_config_data, "db": db}}
+        
+        # Invoke the graph
+        RAIN_GRAPH.invoke(initial_state, config=graph_config)
+        
+        # The supervisory_agent handles the final commit and response update
+        
+    except Exception as e:
+        # Crucial for debugging background task failures
+        logging.error(f"FATAL LangGraph background task failed for query_id {initial_state.get('session_id')}: {e}", exc_info=True)
+        # Handle cleanup or notification of crash if necessary
+        
+    finally:
+        if db:
+            db.close()
 
 def get_db():
     db = SessionLocal()
@@ -39,15 +57,16 @@ def get_db():
 
 
 @router.post("/user_input")
-def post_user_input(payload: schemas.UserInputIn, db: Session = Depends(get_db)):
+def post_user_input(payload: schemas.UserInputIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
-    Stores user query, then immediately triggers the multi-agent rainfall prediction workflow.
+    Stores user query, then queues the multi-agent rainfall prediction workflow 
+    to run asynchronously.
     """
     user = db.query(models.User).filter(models.User.id == payload.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # 1. Persist the new user query to the database
+    # Persist the new user query to the database
     row = models.UserQuery(
         user_id=payload.user_id, 
         query_text=payload.message, 
@@ -57,56 +76,37 @@ def post_user_input(payload: schemas.UserInputIn, db: Session = Depends(get_db))
     db.commit()
     db.refresh(row)
     
-    # NOTE: db.close() should be handled by the 'finally' in get_db, but since
-    # we need the same session for the graph, we must ensure we don't close it prematurely.
-
-    # 2. Configure the Graph Run
-    # The 'config' dictionary is passed to all agents via the 'config' argument.
-    graph_config = {
-        "configurable": {
-            # Pass the currently open DB session for the agents to use
-            "db": db, 
-            # The Fetcher Agent will use this ID to find the query,
-            # but we explicitly pass the query text/id for transparency.
-            "user_id": payload.user_id,
-            "query_id": row.id, 
-            # Default location parameters (can be extracted by a future agent)
-            "latitude": 6.585,
-            "longitude": 3.983,
-            **MODEL_CONFIG
-        }
+    # Graph Configuration (WITHOUT the DB session)
+    graph_config_data = {
+        "user_id": payload.user_id,
+        "query_id": row.id,
+        "latitude": 6.585,
+        "longitude": 3.983,
+        **MODEL_CONFIG
     }
     
-    # 3. Initialize the State (Optional, as the Fetcher Agent populates it)
+    # Initialize the State
     initial_state = AgentState(
         session_id=row.id, 
         user_id=row.user_id, 
         user_query=row.query_text
     )
 
-    # 4. Invoke the LangGraph workflow (Triggers the entire process)
-    # This call is SYNCHRONOUS. For a long-running process like prediction,
-    # consider making this ASYNCHRONOUS (e.g., using a background task or Celery).
-    try:
-        final_state = RAIN_GRAPH.invoke(initial_state, config=graph_config)
-        
-        # Check for success/failure status from the Supervisory Agent
-        final_status = final_state.get("status", "error")
-        final_response = final_state.get("prediction_interpretation", "Processing complete, check response in database.")
-        
-    except Exception as e:
-        # Catch any unexpected crashes in the graph
-        final_status = "crash"
-        final_response = f"Agent workflow failed: {e}"
+    # Invoke the LangGraph workflow ASYNCHRONOUSLY
+    # We pass the state and config data, and the run_agent_workflow function
+    # will handle opening its own DB connection.
+    background_tasks.add_task(
+        run_agent_workflow, 
+        initial_state, 
+        graph_config_data
+    )
 
-
-    # 5. Return acknowledgement to the user (and the final result if successful/quick)
+    # Return immediate acknowledgement to the user
+    # The user now knows the request is being processed in the background.
     return {
-        "status": "triggered_and_completed",
+        "status": "processing_started",
         "query_id": row.id,
         "user_id": row.user_id,
         "created_at": row.created_at.isoformat(),
-        # For synchronous execution, return the final interpretation directly
-        "agent_response": final_response, 
-        "agent_status": final_status
+        "message": "Rainfall prediction started."
     }

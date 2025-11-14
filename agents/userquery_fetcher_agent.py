@@ -1,9 +1,7 @@
-# agents/userquery_fetcher_agent.py
-
 import logging
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app import models # Imports the SQLAlchemy models: User, UserQuery
+from app import models
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -17,18 +15,18 @@ def userquery_fetcher_agent(state: dict, config: dict) -> dict:
     (for general supervision/cleanup).
     """
 
-    # 1. Extract inputs from config and state
+    # Extract inputs from config and state
     db: Session = config.get("db")
     user_id = config.get("user_id")
     session_id = state.get("session_id") # Query ID passed from the FastAPI endpoint
 
-    # 2. Validation Checks
+    # Validation Checks
     if db is None or user_id is None:
         logger.error("Missing DB session or user_id in configuration.")
         # Raise an HTTPException to halt the graph if critical config is missing
         raise HTTPException(status_code=500, detail="Missing critical configuration.")
 
-    # Ensure user exists (using your app.models.User)
+    # Ensure user exists
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         logger.warning(f"User with ID {user_id} not found.")
@@ -36,7 +34,7 @@ def userquery_fetcher_agent(state: dict, config: dict) -> dict:
 
     logger.info(f"Starting query fetch for user_id={user_id}. Session ID hint: {session_id}")
     
-    # 3. Dynamic Fetching Strategy
+    # Dynamic Fetching Strategy
     query = None
     
     if session_id:
@@ -58,14 +56,14 @@ def userquery_fetcher_agent(state: dict, config: dict) -> dict:
             .first()
         )
 
-    # 4. Final Query Validation
+    # Final Query Validation
     if not query:
         logger.warning(f"No queries found for user_id={user_id} after all attempts.")
         raise HTTPException(status_code=404, detail="No user query found for this user.")
 
     logger.info(f"Query successfully retrieved (query_id={query.id})")
 
-    # 5. Update and Return State
+    # Update and Return State
     updated_state = {
         **state,
         "session_id": query.id, # The ID of the query record to be updated later

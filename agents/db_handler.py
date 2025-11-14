@@ -1,7 +1,6 @@
-# db_handler.py
 from typing import Optional
 from sqlalchemy.orm import Session
-from app.models import UserQuery  # Assuming your models file is in 'app/models.py'
+from app.models import UserQuery
 from app.database import SessionLocal # Import SessionLocal for type hinting/usage if needed
 
 def get_user_query_by_id(db: Session, query_id: int) -> Optional[UserQuery]:
