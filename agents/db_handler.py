@@ -15,7 +15,7 @@ def get_user_query_by_id(db: Session, query_id: int) -> Optional[UserQuery]:
     Returns:
         Optional[UserQuery]: The UserQuery object if found, otherwise None.
     """
-    # Use the SQLAlchemy session's query method to filter by ID and fetch the first result
+    # Use the SQLAlchemy session's query method to filter by ID and fetch the first output
     return db.query(UserQuery).filter(UserQuery.id == query_id).first()
 
 def save_agent_response(db: Session, query_id: int, response_text: str) -> None:

@@ -46,7 +46,7 @@ def nasa_monthly(latitude=6.585, longitude=3.983, start_year=2022, end_year=2025
     # Handle missing/future values
     df = df[REQUIRED_FEATURES]
     df = df.replace(-999.0, np.nan)   # Replace NASA missing flag with NaN
-    df = df.ffill().bfill()           # Fill missing values forward/backward
+    df = df.ffill().bfill()           # Fills missing values forward/backward
 
     return df
 

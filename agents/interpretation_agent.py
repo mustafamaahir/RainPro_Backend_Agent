@@ -21,7 +21,7 @@ def interpretation_agent(state: dict, config: dict):
     latitude = state.get("intent", {}).get("latitude", 6.585)
     longitude = state.get("intent", {}).get("longitude", 3.983)
 
-    # Build prompt for LLM
+    # Prompt for LLM
     prompt = f"""
     You are a rainfall forecasting expert.
 

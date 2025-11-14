@@ -1,10 +1,7 @@
 from langgraph.graph import StateGraph, END, START
 from typing import TypedDict, Dict, Any, Optional, List
 import pandas as pd
-from app.database import SessionLocal # Assuming you have this defined to pass to the agents
-
-# --- Agent Imports (Adjust paths as needed) ---
-# Assuming all agents are in a 'agents' subdirectory relative to this file
+from app.database import SessionLocal
 from agents.userquery_fetcher_agent import userquery_fetcher_agent
 from agents.intent_agent import intent_detection_agent
 from agents.parameter_fetcher_agent import parameter_fetcher_agent
@@ -14,7 +11,7 @@ from agents.interpretation_agent import interpretation_agent
 from agents.supervisory_agent import supervisory_agent # Used as the final DB update step
 from agents.fallback_agent import fallback_agent # Utility for errors/unrelated intents
 
-# Your existing AgentState definition (re-included for completeness)
+
 class AgentState(TypedDict):
     """Represents the state of the agent workflow."""
     session_id: Optional[int]
@@ -22,13 +19,12 @@ class AgentState(TypedDict):
     user_query: Optional[str]
     intent: Optional[Dict[str, Any]] # e.g., {"mode": "daily", ...}
     nasa_parameters: Optional[pd.DataFrame]
-    # ... (other fields from your definition) ...
     preprocessed_data: Optional[Any]
     error: Optional[str]
     forecasts: Optional[List[Dict[str, Any]]]
     monthly_forecasts: Optional[List[Dict[str, Any]]]
     prediction_interpretation: Optional[str]
-    # NOTE: Simplifying the State to focus on the flow
+    
     
 
 def route_intent(state: AgentState) -> str:
@@ -57,7 +53,7 @@ def build_rainfall_graph():
     """Constructs the LangGraph workflow."""
     workflow = StateGraph(AgentState)
 
-    # --- 1. Nodes (The Agents) ---
+    # Nodes (The Agents)
     workflow.add_node("fetch_query", userquery_fetcher_agent)
     workflow.add_node("detect_intent", intent_detection_agent)
     workflow.add_node("fetch_parameters", parameter_fetcher_agent)
@@ -65,19 +61,18 @@ def build_rainfall_graph():
     workflow.add_node("predict_model", model_prediction_agent)
     workflow.add_node("interpret_result", interpretation_agent)
     workflow.add_node("supervise_and_save", supervisory_agent)
-    # Add a simple fallback for clean error/unrelated handling
-    workflow.add_node("fallback", lambda state, config: {"error": "Query not related to daily or monthly rainfall prediction."})
+    # Fallback for clean error/unrelated handling
+    workflow.add_node("fallback", fallback_agent)
 
 
-    # --- 2. Define the Flow (Edges) ---
 
-    # 1. Start -> Fetch Query
+    # Start -> Fetch Query
     workflow.add_edge(START, "fetch_query")
 
-    # 2. Fetch Query -> Detect Intent
+    # Fetch Query -> Detect Intent
     workflow.add_edge("fetch_query", "detect_intent")
 
-    # 3. Conditional Routing after Intent Detection
+    # Conditional Routing after Intent Detection
     workflow.add_conditional_edges(
         "detect_intent",
         route_intent,

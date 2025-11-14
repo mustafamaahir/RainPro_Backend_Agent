@@ -6,7 +6,7 @@ from app import models
 
 def supervisory_agent(state: dict, config: dict):
     """
-    Supervisory agent orchestrates the entire workflow:
+    Supervisory agent orchestrates the entire workflow process:
     Fetch user query and get intent
     Fetch NASA data
     Preprocess data

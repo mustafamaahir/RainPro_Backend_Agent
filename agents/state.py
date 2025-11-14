@@ -3,7 +3,7 @@ import pandas as pd
 
 class AgentState(TypedDict):
     """
-    Represents the state of the agent workflow.
+    This represents the state of the agent workflow.
     Shared and modified by all agents.
     """
     session_id: Optional[int]                  # DB query_id (used by Fetcher and Supervisor)

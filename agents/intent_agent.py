@@ -5,7 +5,7 @@ Purpose: Determine whether the user's rainfall prediction query refers to
 
 Dependencies:
 - Relies on `user_query` in the shared state (from userquery_fetcher_agent).
-- Requires OpenAI API key to be available via environment variable.
+- Requires OpenAI API key to be available in your .env.
 
 Output:
 - Adds `intent` field to the state (e.g., {"mode": "daily"} or {"mode": "monthly"}).

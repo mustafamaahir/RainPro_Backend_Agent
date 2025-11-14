@@ -3,7 +3,7 @@ Agent Name: UserQueryFetcherAgent
 Purpose: Retrieve the latest query submitted by a specific user from the database
          and provide it as structured input for downstream agents in the workflow.
 
-This is typically the first agent in the LangGraph chain.
+This is typically the first agent in the LangGraph.
 """
 
 import logging
