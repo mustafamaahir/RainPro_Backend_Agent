@@ -118,7 +118,7 @@ def get_daily_forecast(user_id: int = Query(...), db: Session = Depends(get_db))
         })
 
     return {
-        formatted_data
+        "data": formatted_data
     }
 
 
@@ -214,5 +214,5 @@ def get_monthly_forecast(user_id: int = Query(...), db: Session = Depends(get_db
         })
 
     return {
-        formatted_data
+        "data": formatted_data
     }
