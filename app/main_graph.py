@@ -1,20 +1,18 @@
-# main_graph.py
-
 from langgraph.graph import StateGraph, END, START
-from .state_logic import AgentState
+from agents.state import AgentState
 
 # Import all agent functions
-from agents.userquery_fetcher_logic import query_fetcher_agent
-from agents.intent_logic import intent_agent
-from agents.parameter_fetcher_logic import parameter_fetcher_agent
-from agents.prediction_logic import prediction_agent
-from agents.interpretation_logic import interpretation_agent
-from agents.supervisory_logic import supervisory_agent
+from agents.userquery_fetcher_agent import userquery_fetcher_agent
+from agents.intent_agent import intent_detection_agent
+from agents.parameter_fetcher_agent import parameter_fetcher_agent
+from agents.prediction_agent import model_prediction_agent
+from agents.interpretation_agent import interpretation_agent
+from agents.supervisory_agent import supervisory_agent
 from agents.db_handler import save_agent_response # For explicit error saving if needed
 from app.database import get_db
 
-# --- 1. Define Conditional Routing Functions ---
 
+# Conditional routing function
 def route_after_intent(state: AgentState):
     """Routes based on the classified intent."""
     if state.get("error"):
@@ -86,7 +84,7 @@ def final_unrelated_response(state: AgentState):
     return {"final_response": response_text}
 
 
-# --- 2. Build the Graph ---
+#  Graph Coupling
 
 def build_rainfall_graph():
     """Initializes and configures the LangGraph StateGraph."""
@@ -95,10 +93,10 @@ def build_rainfall_graph():
     workflow = StateGraph(AgentState)
 
     # 1. Add all Nodes (Agents)
-    workflow.add_node("query_fetcher", query_fetcher_agent)
-    workflow.add_node("intent_agent", intent_agent)
+    workflow.add_node("query_fetcher", userquery_fetcher_agent)
+    workflow.add_node("intent_agent", intent_detection_agent)
     workflow.add_node("parameter_fetcher", parameter_fetcher_agent)
-    workflow.add_node("prediction_agent", prediction_agent)
+    workflow.add_node("prediction_agent", model_prediction_agent)
     workflow.add_node("interpretation_agent", interpretation_agent)
     workflow.add_node("supervisory_agent", supervisory_agent)
     
