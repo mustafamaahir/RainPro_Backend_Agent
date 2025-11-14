@@ -1,35 +1,23 @@
-# app/database.py
-# Database initialization and session factory for SQLite (SQLAlchemy).
-
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.exc import OperationalError # <-- Added this import for connection checking
+import os
 
-# ---- Path Setup ----
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_DIR = os.path.dirname(BASE_DIR)
-DATA_DIR = os.path.join(PROJECT_DIR, "data")
+# --- Hardcoded PostgreSQL Connection ---
+# The explicit URL for the remote PostgreSQL database.
+DATABASE_URL = "postgresql://rainsight_user:8HxCGcHVnTPPgCoyNHBYTQ0m2Sw6BTWL@dpg-d45rs2a4d50c73c7kmf0-a/rainsight"
 
-# Ensure ./data directory exists
-os.makedirs(DATA_DIR, exist_ok=True)
+# connect_args is now an empty dictionary as it is not needed for PostgreSQL
+connect_args = {}
 
-# ---- Database URL Selection ----
-# Prefer DATABASE_URL from environment (Render/PostgreSQL)
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Fix PostgreSQL schema prefix if using Render format (postgres:// -> postgresql://)
+# This is a precaution and remains for robustness, even though the above URL is correct.
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Fallback to local SQLite when DATABASE_URL is not set
-if not DATABASE_URL:
-    DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'sail.db')}"
-    connect_args = {"check_same_thread": False}
-else:
-    # For PostgreSQL, Render gives URL in the format:
-    # postgres://user:pass@host:port/dbname
-    # SQLAlchemy prefers postgresql://
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    connect_args = {}
 
 # ---- Engine Setup ----
+# Connects directly to the hardcoded PostgreSQL URL.
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
@@ -51,24 +39,27 @@ def get_db():
         db.close()
 
 def init_db():
-    """Initializes or rebuilds database tables (used for Render SQLite schema sync)."""
-    import app.models as models  # noqa: F401
-    from sqlalchemy import inspect
+    """Initializes database tables and confirms connection."""
+    
+    # 1. Explicit Connection Check
+    print("\n[DB] Attempting to connect to the PostgreSQL database...")
+    try:
+        # Establish a connection and close it immediately to test connectivity
+        with engine.connect() as connection:
+            # Execute a simple test query (SELECT 1)
+            connection.execute('SELECT 1') 
+            pass # Connection will close automatically when exiting the 'with' block
+        print("✅ [DB] Database connection to PostgreSQL successful!")
 
-    inspector = inspect(engine)
-    tables = inspector.get_table_names()
-
-    # Check if database exists and has outdated schema
-    if "users" in tables:
-        columns = [col["name"] for col in inspector.get_columns("users")]
-        if "email" not in columns:
-            print("⚠️ Detected outdated schema (missing email). Rebuilding database...")
-            Base.metadata.drop_all(bind=engine)
-            Base.metadata.create_all(bind=engine)
-            print("✅ Database successfully rebuilt with latest schema.")
-            return
+    except OperationalError as e:
+        print(f"❌ [DB] ERROR: Failed to connect to PostgreSQL database.")
+        print(f"        Please check the DATABASE_URL and network connectivity. Error: {e}")
+        # Note: If this fails, the table creation below will likely also fail, but we let it proceed.
+        
+    # 2. Import models and create tables
+    # Import models here to ensure they are registered with Base
+    from app import models  # This triggers model registration
 
     # Create tables if not existing
     Base.metadata.create_all(bind=engine)
-    print("✅ Database initialized successfully.")
-
+    print("✅ [DB] Database initialization checked. Tables created if missing.")
