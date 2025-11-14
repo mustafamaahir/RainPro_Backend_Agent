@@ -1,12 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-<<<<<<< HEAD
-from sqlalchemy.exc import OperationalError # <-- Added this import for connection checking
+from sqlalchemy.exc import OperationalError # This import is for connection checking
 import os
-=======
-import app.models as models  # noqa: F401
-from sqlalchemy import inspect
->>>>>>> 3776b14bf46fb681e061af5c7e997002761a34b4
 
 # --- Hardcoded PostgreSQL Connection ---
 # The explicit URL for the remote PostgreSQL database.
@@ -44,7 +39,6 @@ def get_db():
         db.close()
 
 def init_db():
-<<<<<<< HEAD
     """Initializes database tables and confirms connection."""
     
     # 1. Explicit Connection Check
@@ -65,21 +59,6 @@ def init_db():
     # 2. Import models and create tables
     # Import models here to ensure they are registered with Base
     from app import models  # This triggers model registration
-=======
-    """Initializes or rebuilds database tables (used for Render SQLite schema sync)."""
-    inspector = inspect(engine)
-    tables = inspector.get_table_names()
-
-    # Check if database exists and has outdated schema
-    if "users" in tables:
-        columns = [col["name"] for col in inspector.get_columns("users")]
-        if "email" not in columns:
-            print("⚠️ Detected outdated schema (missing email). Rebuilding database...")
-            Base.metadata.drop_all(bind=engine)
-            Base.metadata.create_all(bind=engine)
-            print("✅ Database successfully rebuilt with latest schema.")
-            return
->>>>>>> 3776b14bf46fb681e061af5c7e997002761a34b4
 
     # Create tables if not existing
     Base.metadata.create_all(bind=engine)

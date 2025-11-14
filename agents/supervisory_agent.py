@@ -1,5 +1,3 @@
-# graph/agents/supervisory_agent.py
-
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app import models
