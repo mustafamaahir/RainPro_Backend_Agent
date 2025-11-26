@@ -1,15 +1,15 @@
 import requests
 import json
 import logging
-
+from langchain_core.runnables import RunnableConfig
 
 logger = logging.getLogger(__name__)
 
 # Define the local URL where the FastAPI app is running
 # NOTE: Replace with the actual base URL
-BASE_API_URL = "http://localhost:8000" 
+BASE_API_URL = "https://rainfall-forecast-api-production.up.railway.app" 
 
-def supervisory_agent(state: dict, config: dict):
+def supervisory_agent(state: dict, config: RunnableConfig | None = None):
     """
     Supervisory agent that POSTs the final result to the FastAPI endpoint 
     for database persistence, running asynchronously from the main thread.

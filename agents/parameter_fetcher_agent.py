@@ -2,8 +2,9 @@ import pandas as pd
 from fastapi import HTTPException
 from datetime import datetime
 from app.utils.nasa_fetchers import nasa_monthly, nasa_daily  # Called the existing NASA API wrapper
+from langchain_core.runnables import RunnableConfig
 
-def parameter_fetcher_agent(state: dict, config: dict):
+def parameter_fetcher_agent(state: dict, config: RunnableConfig | None = None):
     """
     Parameter Fetcher Agent
     -----------------------

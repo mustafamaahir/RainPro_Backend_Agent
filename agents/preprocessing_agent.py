@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from langchain_core.runnables import RunnableConfig 
 
 FEATURES = [
     'RH2M', 'WS10M', 'T2M', 'WD10M',
@@ -8,7 +9,7 @@ FEATURES = [
 ]
 TARGET_COL = "PRECTOTCORR"
 
-def preprocessing_agent(state: dict, config: dict):
+def preprocessing_agent(state: dict, config: RunnableConfig | None = None):
     """
     Preprocess NASA data for model readiness.
     Handles both daily and monthly datasets based on user intent.

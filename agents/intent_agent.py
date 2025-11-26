@@ -16,6 +16,7 @@ import os
 from fastapi import HTTPException
 from openai import OpenAI
 from dotenv import load_dotenv
+from langchain_core.runnables import RunnableConfig
 
 load_dotenv()
 
@@ -32,7 +33,7 @@ except Exception as e:
     client = None
 
 
-def intent_detection_agent(state: dict, config: dict = None) -> dict:
+def intent_detection_agent(state: dict, config: RunnableConfig | None = None) -> dict:
     """
     Classifies the user's rainfall prediction query as either DAILY or MONTHLY.
 

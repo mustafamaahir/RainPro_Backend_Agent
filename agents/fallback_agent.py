@@ -1,6 +1,7 @@
 from typing import Dict, Any, Optional
+from langchain_core.runnables import RunnableConfig
 
-def fallback_agent(state: dict, config: dict = None) -> Dict[str, Any]:
+def fallback_agent(state: dict, config: RunnableConfig | None = None) -> Dict[str, Any]:
     """
     Handles cases where the intent is 'unrelated', or an error occurred 
     early in the workflow (e.g., missing user_query or DB connection issues).

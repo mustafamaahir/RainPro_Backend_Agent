@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from tensorflow.keras.models import load_model
 import joblib
+from langchain_core.runnables import RunnableConfig
+
 
 FEATURES = [
     'RH2M', 'WS10M', 'T2M', 'WD10M',
@@ -29,7 +31,7 @@ def inverse_transform_prediction(pred_scaled, scaler, last_row_scaled):
 
 
 # Main prediction agent
-def model_prediction_agent(state: dict, config: dict):
+def model_prediction_agent(state: dict, config: RunnableConfig | None = None):
     """
     Predict rainfall using pre-trained Keras model.
     Supports both daily and monthly prediction.

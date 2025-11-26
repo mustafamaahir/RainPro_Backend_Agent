@@ -2,13 +2,14 @@ import logging
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app import models
+from langchain_core.runnables import RunnableConfig
 
 # Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def userquery_fetcher_agent(state: dict, config: dict) -> dict:
+def userquery_fetcher_agent(state: dict, config: RunnableConfig | None = None) -> dict:
     """
     Retrieves the user query. Prioritizes the 'session_id' from the initial 
     state (for direct triggers) and falls back to fetching the latest query 

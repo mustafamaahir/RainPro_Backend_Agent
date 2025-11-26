@@ -1,11 +1,13 @@
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+from langchain_core.runnables import RunnableConfig
+
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def interpretation_agent(state: dict, config: dict):
+def interpretation_agent(state: dict, config: RunnableConfig | None = None):
     """
     Interpret rainfall predictions and generate recommendations
     using OpenAI LLM.
