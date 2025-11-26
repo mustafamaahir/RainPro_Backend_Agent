@@ -14,8 +14,8 @@ connect_args = {}
 
 # Fix PostgreSQL schema prefix if using Render format (postgres:// -> postgresql://)
 # This is a precaution and remains for robustness, even though the above URL is correct.
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# if DATABASE_URL.startswith("postgres://"):
+#     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 
 # ---- Engine Setup ----

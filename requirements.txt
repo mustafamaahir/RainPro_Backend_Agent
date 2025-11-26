@@ -7,3 +7,13 @@ matplotlib
 aiofiles
 pydantic[email]
 psycopg2-binary
+pandas
+numpy
+openai
+langchain
+langchain-openai
+langgraph
+python-dotenv
+requests
+tensorflow
+joblib
