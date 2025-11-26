@@ -5,8 +5,7 @@ import os
 
 # --- Hardcoded PostgreSQL Connection ---
 # The explicit URL for the remote PostgreSQL database.
-DATABASE_URL = "postgresql://rainsight_user:8HxCGcHVnTPPgCoyNHBYTQ0m2Sw6BTWL@dpg-d45rs2a4d50c73c7kmf0-a/rainsight"
-
+DATABASE_URL = os.getenv("DATABASE_URL")
 # connect_args is now an empty dictionary as it is not needed for PostgreSQL
 connect_args = {}
 

@@ -42,7 +42,7 @@ def interpretation_agent(state: dict, config: dict):
                 {"role": "system", "content": "You are a helpful weather prediction assistant."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=500,
+            max_tokens=200,
             temperature=0.7
         )
 
