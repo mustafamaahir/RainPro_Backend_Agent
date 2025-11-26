@@ -3,9 +3,12 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.exc import OperationalError # This import is for connection checking
 import os
 
+print("DATABASE_URL:", os.getenv("DATABASE_URL"))
 # --- Hardcoded PostgreSQL Connection ---
 # The explicit URL for the remote PostgreSQL database.
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set")
 # connect_args is now an empty dictionary as it is not needed for PostgreSQL
 connect_args = {}
 
