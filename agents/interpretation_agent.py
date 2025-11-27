@@ -1,106 +1,98 @@
-import os
 import logging
+import os
 from datetime import datetime
+from app import models
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from openai import OpenAI
 from dotenv import load_dotenv
-from agents.prediction_agent import model_prediction_agent  # make sure this path is correct
+from langchain_core.runnables import RunnableConfig
 
-# Load environment variables
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Initialize OpenAI client
+try:
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+except Exception as e:
+    logger.error(f"Failed to initialize OpenAI client: {e}")
+    client = None
 
-def interpretation_agent(state: dict, config: dict) -> dict:
-    """
-    Generate interpretation and recommendations for rainfall predictions.
-    Updates the UserQuery table's response_text and response_time.
-    
-    Args:
-        state (dict): Shared state containing session_id, user_id, forecasts, intent, etc.
-        config (dict): Must include DB session under key 'db'.
 
-    Returns:
-        dict: Updated state including 'prediction_interpretation'.
+def interpretation_agent(state: dict, config: RunnableConfig | dict) -> dict:
     """
-    db: Session = config.get("db")
-    if db is None:
+    Generates interpretation for rainfall prediction and posts the response to DB.
+    Expects:
+        - state['session_id']: ID of the UserQuery
+        - state['forecasts'] or state['monthly_forecasts']: model output
+        - state['intent']['mode']: "daily" or "monthly"
+    Requires:
+        - config['db']: SQLAlchemy session
+    """
+    db: Session = config.get("db") if config else None
+    if not db:
         logger.error("DB session not provided in config.")
-        return {**state, "prediction_interpretation": "DB session missing."}
+        # Still return state with error
+        state["response_text"] = "DB session missing."
+        return state
 
     # Extract query info
     query_id = state.get("session_id")
-    user_id = state.get("user_id")
-    if not query_id or not user_id:
-        logger.error("Invalid state: missing session_id or user_id.")
-        return {**state, "prediction_interpretation": "Invalid state: missing session_id or user_id."}
+    forecasts = state.get("forecasts") or state.get("monthly_forecasts")
+    mode = state.get("intent", {}).get("mode", "daily").lower()
+    latitude = state.get("intent", {}).get("latitude", 6.585)
+    longitude = state.get("intent", {}).get("longitude", 3.983)
 
-    # Ensure forecasts exist; call prediction agent if missing
-    if "forecasts" not in state and "monthly_forecasts" not in state:
-        logger.info("Forecast data missing; running model_prediction_agent.")
-        state = model_prediction_agent(state, config)
+    if not forecasts:
+        response_text = "No prediction data available for interpretation."
+        logger.warning(f"Query {query_id}: {response_text}")
+    else:
+        if not client:
+            response_text = "OpenAI client not initialized."
+            logger.error(f"Query {query_id}: {response_text}")
+        else:
+            # Build prompt
+            prompt = f"""
+            You are a rainfall forecasting expert.
 
-    forecast_data = state.get("forecasts") or state.get("monthly_forecasts")
-    if not forecast_data:
-        logger.error("No forecast data available after prediction.")
-        return {**state, "prediction_interpretation": "No forecast data available."}
+            The {mode} rainfall forecast for location ({latitude}, {longitude}) is:
+            {forecasts}
 
-    # Fetch UserQuery record
-    user_query = db.query(config.get("models").UserQuery).filter(
-        config.get("models").UserQuery.id == query_id,
-        config.get("models").UserQuery.user_id == user_id
-    ).first()
+            Provide a concise interpretation of predicted rainfall and actionable recommendations
+            for agriculture or water management.
+            """
+            try:
+                llm_response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful weather assistant."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=200
+                )
+                response_text = llm_response.choices[0].message.content.strip()
+            except Exception as e:
+                response_text = f"Error generating interpretation: {str(e)}"
+                logger.error(f"Query {query_id}: {response_text}")
 
-    if not user_query:
-        logger.error(f"UserQuery with id={query_id} not found.")
-        return {**state, "prediction_interpretation": "User query not found."}
-
-    # Extract intent and location
-    intent = state.get("intent", {})
-    mode = intent.get("mode", "daily")
-    latitude = intent.get("latitude", 6.585)
-    longitude = intent.get("longitude", 3.983)
-
-    # Build prompt for LLM
-    prompt = f"""
-    You are a rainfall forecasting expert.
-    The {mode} rainfall forecast for location ({latitude}, {longitude}) is:
-    {forecast_data}
-
-    Provide:
-    1. Interpretation of the predicted rainfall (expected wet/dry days, potential flooding)
-    2. Recommendations for agriculture, water management, or farm planning.
-    """
-
-    # Call OpenAI API
+    # Update DB
     try:
-        llm_response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a helpful weather prediction assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=250,
-            temperature=0.7
-        )
-        interpretation_text = llm_response.choices[0].message.content.strip()
-        logger.info(f"Interpretation generated for query_id={query_id}")
-
+        query_obj = db.query(models.UserQuery).filter(models.UserQuery.id == query_id).first()
+        if query_obj:
+            query_obj.response_text = response_text
+            query_obj.response_time = datetime.utcnow()
+            db.add(query_obj)
+            db.commit()
+            db.refresh(query_obj)
+            logger.info(f"Query {query_id}: response saved to DB.")
+        else:
+            logger.warning(f"Query {query_id}: not found in DB, cannot update response.")
     except Exception as e:
-        interpretation_text = f"Error generating interpretation: {str(e)}"
-        logger.error(f"OpenAI API call failed: {e}")
-
-    # Update DB record
-    user_query.response_text = interpretation_text
-    user_query.response_time = datetime.utcnow()
-    user_query.is_completed = True
-    db.add(user_query)
-    db.commit()
-    db.refresh(user_query)
+        logger.error(f"Query {query_id}: failed to update DB: {e}")
 
     # Return updated state
-    return {**state, "prediction_interpretation": interpretation_text}
+    state["response_text"] = response_text
+    return state

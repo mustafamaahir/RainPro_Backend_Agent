@@ -1,21 +1,20 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
+from datetime import datetime
 from app.database import SessionLocal
 from app import models, schemas
-from datetime import datetime
 from agents.rainfall_graph import build_rainfall_graph, AgentState
 import logging
 
-# Logging setup
+# Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="", tags=["user_input"])
 
-# Graph Initialization
+# Build the LangGraph
 RAIN_GRAPH = build_rainfall_graph()
 
-# ✅ Linux-friendly paths
 MODEL_CONFIG = {
     "models/scaler_daily.pkl": "RainSight/models/scaler_daily.pkl",
     "models/scaler_monthly.pkl": "RainSight/models/scaler_monthly.pkl",
@@ -23,20 +22,21 @@ MODEL_CONFIG = {
     "models/rainfall_monthly_predictor.h5": "RainSight/models/rainfall_monthly_predictor.h5"
 }
 
-# Background Worker
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 def run_agent_workflow(initial_state: AgentState, graph_config_data: dict):
     db = None
     try:
         db = SessionLocal()
-
-        # Add DB session to config
         graph_config = {"configurable": {**graph_config_data, "db": db}}
-
         logger.info(f"Running LangGraph for query {initial_state.get('session_id')}")
-
-        # Run graph
         RAIN_GRAPH.invoke(initial_state, config=graph_config)
-
     except Exception as e:
         logger.error(
             f"LangGraph failed for query {initial_state.get('session_id')}: {e}",
@@ -45,14 +45,6 @@ def run_agent_workflow(initial_state: AgentState, graph_config_data: dict):
     finally:
         if db:
             db.close()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post("/user_input")
@@ -76,7 +68,6 @@ def post_user_input(
     db.commit()
     db.refresh(row)
 
-    # ✅ Use session_id consistently
     graph_config_data = {
         "user_id": payload.user_id,
         "session_id": row.id,
@@ -85,14 +76,12 @@ def post_user_input(
         **MODEL_CONFIG
     }
 
-    # Initial Agent State
     initial_state = AgentState(
         session_id=row.id,
         user_id=row.user_id,
         user_query=row.query_text
     )
 
-    # Run graph asynchronously
     background_tasks.add_task(
         run_agent_workflow,
         initial_state,
