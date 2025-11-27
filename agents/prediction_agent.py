@@ -38,22 +38,21 @@ DEFAULTS = {
     "models/rainfall_daily_predictor.h5": "../models/rainfall_daily_predictor.h5",
     "models/rainfall_monthly_predictor.h5": "../models/rainfall_monthly_predictor.h5",
     "models/scaler_daily.pkl": "../models/scaler_daily.pkl",
-    "models/scaler_monthly.pkl": "../models/scaler_monthly.pkl",
+    "models/scaler_monthly.pkl": "models/scaler_monthly.pkl",
 }
 
 
-def _get_config_value(config, key, default=None):
+def _get_config_value(config: RunnableConfig | None, key: str):
     """
-    Safely get a value from config.
-    Works whether config is a dict or object.
+    Safe helper to get the path from RunnableConfig or dict-like config.
     """
     if config is None:
-        return default
-
-    if isinstance(config, dict):
-        return config.get(key, default)
-
-    return getattr(config, key, default)
+        return DEFAULTS.get(key)
+    try:
+        cfg = config.get("configurable", {}) if hasattr(config, "get") else config.get("configurable", {})
+        return cfg.get(key, DEFAULTS.get(key))
+    except Exception:
+        return DEFAULTS.get(key)
 
 
 def inverse_transform_prediction(pred_scaled: float, scaler, last_row_scaled: np.ndarray) -> float:
