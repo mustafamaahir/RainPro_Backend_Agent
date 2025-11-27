@@ -35,7 +35,7 @@ logger.setLevel(logging.INFO)
 
 # Default artifact paths (adjust if your project layout differs)
 DEFAULTS = {
-    "models/rainfall_daily_predictor.h5": "models/rainfall_daily_predictor.h5",  # Adjust this path
+    "models/rainfall_daily_predictor.h5": "models/rainfall_daily_predictor.h5",
     "models/rainfall_monthly_predictor.h5": "models/rainfall_monthly_predictor.h5",
     "models/scaler_daily.pkl": "models/scaler_daily.pkl",
     "models/scaler_monthly.pkl": "models/scaler_monthly.pkl",
@@ -185,42 +185,44 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
                 # Append and keep window size consistent (tail 15 used in preprocessing)
                 window_local = pd.concat([window_local, pd.DataFrame([new_row])], ignore_index=True).tail(15)
 
-                # Recompute scaled and X_input for next iteration (if needed)
+                # Recompute scaled and X_input for next iteration
                 try:
                     last_row_scaled = scaler.transform(window_local)[-1:].reshape(1, -1)
                     X_input = np.expand_dims(scaler.transform(window_local)[-1:], axis=0)
                 except Exception:
                     # If we can't re-scale (e.g., scaler expects a different shape), keep previous X_input
                     pass
-                logger.info(f"DAILY prediction complete. Forecasts: {forecasts}")
-                return {
-                        **state,
-                        "forecasts": forecasts
-                       }
+
+            # AFTER the loop completes
+            logger.info(f"DAILY prediction complete. Forecasts: {forecasts}")
             return {
                 **state,
-                "status": "success",
-                "mode": "daily",
-                "location": {"latitude": latitude, "longitude": longitude},
                 "forecasts": forecasts
             }
 
         # MONTHLY mode
         elif mode == "monthly":
+            logger.info("📅 Starting MONTHLY prediction...")
+            
             try:
+                logger.info(f"Loading model from: {monthly_model_path}")
                 model = load_model(monthly_model_path, compile=False)
+                logger.info("✅ Model loaded successfully")
             except Exception as e:
-                logger.exception("Failed to load monthly model from %s: %s", monthly_model_path, e)
+                logger.exception("❌ Failed to load monthly model from %s: %s", monthly_model_path, e)
                 return {**state, "error": f"Failed to load monthly model: {e}"}
 
             try:
+                logger.info(f"Loading scaler from: {monthly_scaler_path}")
                 scaler = joblib.load(monthly_scaler_path)
+                logger.info("✅ Scaler loaded successfully")
             except Exception as e:
-                logger.exception("Failed to load monthly scaler from %s: %s", monthly_scaler_path, e)
+                logger.exception("❌ Failed to load monthly scaler from %s: %s", monthly_scaler_path, e)
                 return {**state, "error": f"Failed to load monthly scaler: {e}"}
 
             forecasts = []
             months = int(intent.get("months", 6))
+            logger.info(f"🔢 Forecasting for {months} months")
 
             last_row_scaled = np.array(scaled[-1:]).reshape(1, -1)
             window_local = window.copy().reset_index(drop=True)
@@ -268,16 +270,11 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
                     X_input = np.expand_dims(scaler.transform(window_local)[-1:], axis=0)
                 except Exception:
                     pass
-                logger.info(f"MONTHLY prediction complete. Forecasts: {forecasts}")
-                return {
-                        **state,
-                        "monthly_forecasts": forecasts
-                   }
+
+            # AFTER the loop completes
+            logger.info(f"MONTHLY prediction complete. Forecasts: {forecasts}")
             return {
                 **state,
-                "status": "success",
-                "mode": "monthly",
-                "location": {"latitude": latitude, "longitude": longitude},
                 "monthly_forecasts": forecasts
             }
 
