@@ -4,7 +4,7 @@ from agents.userquery_fetcher_agent import userquery_fetcher_agent
 from agents.intent_agent import intent_detection_agent
 from agents.parameter_fetcher_agent import parameter_fetcher_agent
 from agents.preprocessing_agent import preprocessing_agent
-from agents.model_prediction_agent import model_prediction_agent
+from agents.prediction_agent import model_prediction_agent
 from agents.interpretation_agent import interpretation_agent
 from agents.supervisory_agent import supervisory_agent
 from agents.fallback_agent import fallback_agent  # for errors/unrelated intents
