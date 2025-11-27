@@ -14,7 +14,7 @@ def parameter_fetcher_agent(state: dict, config: RunnableConfig | None = None):
     Updates state with 'nasa_parameters' DataFrame.
     """
     logger.info("🚀 parameter_fetcher_agent started")
-    
+    fetch_days = max(days + 20, 30)
     # Extract location & mode from intent
     intent = state.get("intent", {})
     mode = intent.get("mode", "daily").lower()
@@ -34,7 +34,7 @@ def parameter_fetcher_agent(state: dict, config: RunnableConfig | None = None):
                               start_year=start_year, end_year=end_year)
         elif mode == "daily":
             logger.info(f"🌤️ Fetching DAILY data: last {days} days")
-            df = nasa_daily(latitude=latitude, longitude=longitude, days=days)
+            df = nasa_daily(latitude=latitude, longitude=longitude, days=fetch_days)
         else:
             logger.error(f"❌ Invalid mode: {mode}")
             return {**state, "error": f"Invalid mode: {mode}"}
