@@ -25,7 +25,7 @@ def preprocessing_agent(state: dict, config: RunnableConfig | None = None):
         return {"error": "No NASA data found in state."}
 
     # Choose scaler and other config depending on mode
-    scaler = config.get(r"models/scaler_daily.pkl") if mode == "daily" else config.get(r"models/scaler_monthly.pkl")
+    scaler = config.get("models/scaler_daily.pkl") if mode == "daily" else config.get("models/scaler_monthly.pkl")
 
     # Common cleanup
     # Fill missing columns if not present
