@@ -46,5 +46,5 @@ def parameter_fetcher_agent(state: dict, config: RunnableConfig | None = None):
         "nasa_data_mode": mode,
         "nasa_data_summary": df.describe(include="all").to_dict()
     })
-
+    logger.info(f"✅ NASA parameters fetched: {df is not None}")
     return state
