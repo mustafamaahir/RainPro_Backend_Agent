@@ -4,7 +4,6 @@ from fastapi import HTTPException
 from datetime import datetime
 from app.utils.nasa_fetchers import nasa_daily, nasa_monthly
 from langchain_core.runnables import RunnableConfig
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -15,36 +14,44 @@ def parameter_fetcher_agent(state: dict, config: RunnableConfig | None = None):
     Updates state with 'nasa_parameters' DataFrame.
     """
     logger.info("🚀 parameter_fetcher_agent started")
-    # Extract location & mode
-    latitude = state.get("latitude", 6.585)
-    longitude = state.get("longitude", 3.983)
-    mode = state.get("intent", {}).get("mode", "daily").lower()
-    start_year = state.get("intent", {}).get("start_year", 2022)
-    end_year = state.get("intent", {}).get("end_year", datetime.utcnow().year)
-    days = state.get("intent", {}).get("days", 7)
+    
+    # Extract location & mode from intent
+    intent = state.get("intent", {})
+    mode = intent.get("mode", "daily").lower()
+    latitude = intent.get("latitude", 6.585)
+    longitude = intent.get("longitude", 3.983)
+    start_year = intent.get("start_year", 2022)
+    end_year = intent.get("end_year", datetime.utcnow().year)
+    days = intent.get("days", 7)
+
+    logger.info(f"📍 Location: ({latitude}, {longitude}), Mode: {mode}, Days: {days}")
 
     # Fetch NASA data
     try:
         if mode == "monthly":
+            logger.info(f"📅 Fetching MONTHLY data: {start_year}-{end_year}")
             df = nasa_monthly(latitude=latitude, longitude=longitude,
                               start_year=start_year, end_year=end_year)
         elif mode == "daily":
+            logger.info(f"🌤️ Fetching DAILY data: last {days} days")
             df = nasa_daily(latitude=latitude, longitude=longitude, days=days)
         else:
-            raise HTTPException(status_code=400, detail="Invalid mode. Use 'daily' or 'monthly'.")
+            logger.error(f"❌ Invalid mode: {mode}")
+            return {**state, "error": f"Invalid mode: {mode}"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"NASA API fetch failed: {str(e)}")
+        logger.exception(f"❌ NASA API fetch failed: {e}")
+        return {**state, "error": f"NASA API fetch failed: {str(e)}"}
 
     if df is None or df.empty:
-        raise HTTPException(status_code=404, detail="No NASA data retrieved.")
+        logger.error("❌ No NASA data retrieved")
+        return {**state, "error": "No NASA data retrieved"}
 
-    # Update state
-    state.update({
-        "nasa_parameters": df,
-        "latitude": latitude,
-        "longitude": longitude,
-        "nasa_data_mode": mode,
-        "nasa_data_summary": df.describe(include="all").to_dict()
-    })
-    logger.info(f"✅ NASA parameters fetched: {df is not None}")
-    return state
+    logger.info(f"✅ NASA data fetched successfully - Shape: {df.shape}")
+    logger.info(f"📊 Columns: {list(df.columns)}")
+    logger.info(f"📈 First few rows:\n{df.head(3)}")
+
+    # Return updated state (only include keys that are in AgentState)
+    return {
+        **state,
+        "nasa_parameters": df
+    }
