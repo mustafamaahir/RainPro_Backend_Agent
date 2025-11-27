@@ -3,53 +3,69 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app import models
 from langchain_core.runnables import RunnableConfig
+from typing import Dict, Any
 
-# Configure logging
+# ---------------------------------------------------------
+# Logger Setup
+# ---------------------------------------------------------
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-
-def userquery_fetcher_agent(state: dict, config: RunnableConfig | None = None) -> dict:
+# ---------------------------------------------------------
+# Agent Function
+# ---------------------------------------------------------
+def userquery_fetcher_agent(
+    state: Dict[str, Any],
+    config: RunnableConfig | None = None
+) -> Dict[str, Any]:
     """
-    Retrieves the user query. Prioritizes the 'session_id' from the initial 
-    state (for direct triggers) and falls back to fetching the latest query 
-    (for general supervision/cleanup).
+    Fetch the user query from the database.
+
+    - Uses query_id (session_id) from LangGraph state
+    - Uses db and user_id from LangGraph config["configurable"]
     """
 
-    # Extract inputs from config and state
-    db: Session = config.get("db")
-    user_id = config.get("user_id")
-    session_id = state.get("session_id") # Query ID passed from the FastAPI endpoint
+    # ------------------ CONFIG EXTRACTION ------------------
+    if not config:
+        logger.error("LangGraph config is missing.")
+        raise HTTPException(status_code=500, detail="Missing LangGraph config.")
 
-    # Validation Checks
-    if db is None or user_id is None:
-        logger.error("Missing DB session or user_id in configuration.")
-        # Raise an HTTPException to halt the graph if critical config is missing
-        raise HTTPException(status_code=500, detail="Missing critical configuration.")
+    cfg = config.get("configurable", {})
 
-    # Ensure user exists
+    db: Session = cfg.get("db")
+    user_id = cfg.get("user_id")
+
+    session_id = state.get("session_id")
+
+    # ------------------ VALIDATION ------------------
+    if db is None:
+        logger.error("Database session missing in config.")
+        raise HTTPException(status_code=500, detail="Database session missing.")
+
+    if user_id is None:
+        logger.error("User ID missing in config.")
+        raise HTTPException(status_code=500, detail="User ID missing.")
+
+    # ------------------ USER CHECK ------------------
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         logger.warning(f"User with ID {user_id} not found.")
         raise HTTPException(status_code=404, detail="User not found.")
 
-    logger.info(f"Starting query fetch for user_id={user_id}. Session ID hint: {session_id}")
-    
-    # Dynamic Fetching Strategy
+    logger.info(f"Fetching query for user_id={user_id}, query_id={session_id}")
+
+    # ------------------ QUERY FETCH ------------------
     query = None
-    
+
+    # Try using session_id first
     if session_id:
-        # Strategy A: Use the specific session_id provided by the trigger endpoint
-        logger.info(f"Strategy A: Fetching specific query by ID={session_id}")
         query = db.query(models.UserQuery).filter(
             models.UserQuery.id == session_id,
             models.UserQuery.user_id == user_id
         ).first()
-    
-    # If Strategy A failed (ID not found or not provided)
+
+    # Fallback to latest query
     if not query:
-        # Strategy B: Fallback to fetching the most recent query for the user
-        logger.info(f"Strategy B: Falling back to fetching the LATEST query.")
         query = (
             db.query(models.UserQuery)
             .filter(models.UserQuery.user_id == user_id)
@@ -57,20 +73,17 @@ def userquery_fetcher_agent(state: dict, config: RunnableConfig | None = None) -
             .first()
         )
 
-    # Final Query Validation
+    # ------------------ FINAL CHECK ------------------
     if not query:
-        logger.warning(f"No queries found for user_id={user_id} after all attempts.")
-        raise HTTPException(status_code=404, detail="No user query found for this user.")
+        logger.warning(f"No query found for user_id={user_id}")
+        raise HTTPException(status_code=404, detail="No user query found.")
 
-    logger.info(f"Query successfully retrieved (query_id={query.id})")
+    logger.info(f"Query retrieved successfully: id={query.id}")
 
-    # Update and Return State
-    updated_state = {
+    # ------------------ STATE UPDATE ------------------
+    return {
         **state,
-        "session_id": query.id, # The ID of the query record to be updated later
+        "session_id": query.id,
         "user_id": query.user_id,
         "user_query": query.query_text.strip() if query.query_text else ""
     }
-
-    logger.debug(f"Updated state after fetch: {updated_state}")
-    return updated_state
