@@ -76,20 +76,19 @@ def inverse_transform_prediction(pred_scaled: float, scaler, last_row_scaled: np
 
 
 def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None = None) -> Dict[str, Any]:
-    logger.info("🚀 model_prediction_agent started")
     """
     Main agent invoked by LangGraph.
-
-    Returns updated state with either:
-      - "forecasts": list[...] (daily)
-      - "monthly_forecasts": list[...] (monthly)
-    or sets an "error" key on failure.
     """
+    logger.info("🚀 model_prediction_agent started")
+    
     try:
         # Basic validation
         intent = state.get("intent") or {}
         mode = intent.get("mode", "daily").lower()
+        logger.info(f"📋 Mode detected: {mode}")
+        
         if mode not in ("daily", "monthly"):
+            logger.error(f"❌ Invalid mode: {mode}")
             return {**state, "error": f"Invalid intent mode '{mode}'."}
 
         # Preprocessed inputs
@@ -98,7 +97,10 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
         final_features = state.get("final_features")
         scaled = state.get("scaled")
 
+        logger.info(f"📊 Data check - window: {window is not None}, X_input: {X_input is not None}, final_features: {final_features is not None}, scaled: {scaled is not None}")
+
         if window is None or X_input is None or final_features is None or scaled is None:
+            logger.error("❌ Missing preprocessed data!")
             return {**state, "error": "Missing required preprocessed data in state"}
 
         # Resolve model and scaler paths from config
@@ -107,25 +109,34 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
         daily_scaler_path = _get_config_value(config, "models/scaler_daily.pkl")
         monthly_scaler_path = _get_config_value(config, "models/scaler_monthly.pkl")
 
+        logger.info(f"📁 Model path: {daily_model_path if mode == 'daily' else monthly_model_path}")
+
         latitude = intent.get("latitude", 6.585)
         longitude = intent.get("longitude", 3.983)
 
         if mode == "daily":
+            logger.info("🌤️ Starting DAILY prediction...")
+            
             # Load artifacts
             try:
+                logger.info(f"Loading model from: {daily_model_path}")
                 model = load_model(daily_model_path, compile=False)
+                logger.info("✅ Model loaded successfully")
             except Exception as e:
-                logger.exception("Failed to load daily model from %s: %s", daily_model_path, e)
+                logger.exception("❌ Failed to load daily model from %s: %s", daily_model_path, e)
                 return {**state, "error": f"Failed to load daily model: {e}"}
 
             try:
+                logger.info(f"Loading scaler from: {daily_scaler_path}")
                 scaler = joblib.load(daily_scaler_path)
+                logger.info("✅ Scaler loaded successfully")
             except Exception as e:
-                logger.exception("Failed to load daily scaler from %s: %s", daily_scaler_path, e)
+                logger.exception("❌ Failed to load daily scaler from %s: %s", daily_scaler_path, e)
                 return {**state, "error": f"Failed to load daily scaler: {e}"}
 
             forecasts = []
             days = int(intent.get("days", 7))
+            logger.info(f"🔢 Forecasting for {days} days")
 
             # Ensure shapes are correct
             last_row_scaled = np.array(scaled[-1:]).reshape(1, -1)
