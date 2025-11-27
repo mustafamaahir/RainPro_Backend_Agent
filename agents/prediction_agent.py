@@ -42,17 +42,18 @@ DEFAULTS = {
 }
 
 
-def _get_config_value(config: RunnableConfig | None, key: str):
+def _get_config_value(config, key, default=None):
     """
-    Safe helper to get the path from RunnableConfig or dict-like config.
+    Safely get a value from config.
+    Works whether config is a dict or object.
     """
     if config is None:
-        return DEFAULTS.get(key)
-    try:
-        cfg = config.get("configurable", {}) if hasattr(config, "get") else config.get("configurable", {})
-        return cfg.get(key, DEFAULTS.get(key))
-    except Exception:
-        return DEFAULTS.get(key)
+        return default
+
+    if isinstance(config, dict):
+        return config.get(key, default)
+
+    return getattr(config, key, default)
 
 
 def inverse_transform_prediction(pred_scaled: float, scaler, last_row_scaled: np.ndarray) -> float:
