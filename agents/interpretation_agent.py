@@ -11,11 +11,11 @@ def interpretation_agent(state: dict, config=None):
     """
     Convert predictions into human-readable interpretation & store in DB.
     """
-    if config is None or "db" not in config.configurable:
+    if config is None or "db" not in config:
         state["prediction_interpretation"] = "DB session missing."
         return state
 
-    db: Session = config.configurable["db"]
+    db: Session = config.get["db"]
     query_id = state.get("session_id")
     forecasts = state.get("forecasts") or state.get("monthly_forecasts")
 
