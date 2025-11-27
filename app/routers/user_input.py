@@ -81,7 +81,9 @@ def post_user_input(
     initial_state = AgentState(
         session_id=row.id,
         user_id=row.user_id,
-        user_query=row.query_text
+        user_query=row.query_text,
+        db=db,  # PASS DB SESSION IN STATE
+        query_id=row.id
     )
 
     background_tasks.add_task(

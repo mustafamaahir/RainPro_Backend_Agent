@@ -1,5 +1,6 @@
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, Dict, Any, Optional
+from sqlalchemy.orm import Session
 from agents.userquery_fetcher_agent import userquery_fetcher_agent
 from agents.intent_agent import intent_detection_agent
 from agents.parameter_fetcher_agent import parameter_fetcher_agent
@@ -24,6 +25,9 @@ class AgentState(TypedDict):
     monthly_forecasts: Optional[Any]
     prediction_interpretation: Optional[str]
     error: Optional[str]
+    db: Optional[Session]  # ADD THIS LINE - the database session
+    query_id: Optional[int]  # ADD THIS TOO if not already tracking it elsewhere
+
 
 # ---------------------------
 # Conditional routing after intent detection

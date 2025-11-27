@@ -11,20 +11,22 @@ def interpretation_agent(state: dict, config=None):
     """
     Convert predictions into human-readable interpretation & store in DB.
     """
-    if config is None or "db" not in config:
+    # FIXED: Get db from state, not config
+    db: Session = state.get("db")
+    
+    if not db:
         state["prediction_interpretation"] = "DB session missing."
         return state
 
-    db: Session = config.get("db")
-    query_id = state.get("session_id")
+    query_id = state.get("session_id")  # or state.get("query_id") if you're using that
     forecasts = state.get("forecasts") or state.get("monthly_forecasts")
 
     if not forecasts:
         interpretation_text = "No forecast data available to interpret."
     else:
         mode = state.get("intent", {}).get("mode","daily").lower()
-        lat = state.get("latitude",6.585)
-        lon = state.get("longitude",3.983)
+        lat = state.get("latitude", 6.585)
+        lon = state.get("longitude", 3.983)
         prompt = f"Forecast ({mode}) at ({lat},{lon}): {forecasts}. Interpret concisely."
 
         try:
@@ -47,8 +49,10 @@ def interpretation_agent(state: dict, config=None):
             db.add(query_row)
             db.commit()
             db.refresh(query_row)
+            logger.info(f"Interpretation saved for query_id={query_id}")
     except Exception as e:
         logger.error(f"Error saving interpretation: {e}")
+        db.rollback()  # Add rollback on error
 
     state["prediction_interpretation"] = interpretation_text
     return state
