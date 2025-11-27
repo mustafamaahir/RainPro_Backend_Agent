@@ -2,6 +2,7 @@ from langgraph.graph import StateGraph, END, START
 from typing import TypedDict, Dict, Any, Optional, List
 import pandas as pd
 from app.database import SessionLocal
+from langchain_core.runnables import RunnableConfig
 from agents.userquery_fetcher_agent import userquery_fetcher_agent
 from agents.intent_agent import intent_detection_agent
 from agents.parameter_fetcher_agent import parameter_fetcher_agent
@@ -59,7 +60,7 @@ def build_rainfall_graph():
     workflow.add_node("fetch_parameters", parameter_fetcher_agent)
     workflow.add_node("preprocess_data", preprocessing_agent)
     workflow.add_node("predict_model", model_prediction_agent)
-    workflow.add_node("interpret_result", interpretation_agent)
+    workflow.add_node("interpret_result", interpretation_agent, config = None)
     workflow.add_node("supervise_and_save", supervisory_agent)
     # Fallback for clean error/unrelated handling
     workflow.add_node("fallback", fallback_agent)

@@ -5,6 +5,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
 from sqlalchemy.orm import Session
+from langchain_core.runnables import RunnableConfig
 from app import models
 
 load_dotenv()
@@ -19,7 +20,7 @@ except Exception as e:
     client = None
 
 
-def interpretation_agent(state: dict, config: dict | None = None) -> dict:
+def interpretation_agent(state: dict, config: RunnableConfig | None = None) -> dict:
     """
     Interprets rainfall predictions from prediction agent and writes response_text
     to UserQuery table in DB. Works for both daily and monthly predictions.

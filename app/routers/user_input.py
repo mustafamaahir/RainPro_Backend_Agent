@@ -4,6 +4,7 @@ from datetime import datetime
 from app.database import SessionLocal
 from app import models, schemas
 from agents.rainfall_graph import build_rainfall_graph, AgentState
+from langchain_core.runnables import RunnableConfig
 import logging
 
 # Logging
@@ -33,8 +34,7 @@ def get_db():
 def run_agent_workflow(initial_state: AgentState, graph_config_data: dict):
     db = None
     try:
-        db = SessionLocal()
-        graph_config = {"configurable": {**graph_config_data, "db": db}}
+        graph_config = RunnableConfig(configurable={**graph_config_data, "db": db})
         logger.info(f"Running LangGraph for query {initial_state.get('session_id')}")
         RAIN_GRAPH.invoke(initial_state, config=graph_config)
     except Exception as e:
