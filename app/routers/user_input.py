@@ -32,9 +32,11 @@ def get_db():
 
 
 def run_agent_workflow(initial_state: AgentState, graph_config_data: dict):
-    db = None
+    db = SessionLocal()   # ✅ REAL DB SESSION
     try:
-        graph_config = RunnableConfig(configurable={**graph_config_data, "db": db})
+        graph_config = RunnableConfig(
+            configurable={**graph_config_data, "db": db}
+        )
         logger.info(f"Running LangGraph for query {initial_state.get('session_id')}")
         RAIN_GRAPH.invoke(initial_state, config=graph_config)
     except Exception as e:
@@ -43,8 +45,8 @@ def run_agent_workflow(initial_state: AgentState, graph_config_data: dict):
             exc_info=True
         )
     finally:
-        if db:
-            db.close()
+        db.close()   # ✅ Proper cleanup
+
 
 
 @router.post("/user_input")
