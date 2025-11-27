@@ -15,7 +15,7 @@ def interpretation_agent(state: dict, config=None):
         state["prediction_interpretation"] = "DB session missing."
         return state
 
-    db: Session = config.get["db"]
+    db: Session = config.get("db")
     query_id = state.get("session_id")
     forecasts = state.get("forecasts") or state.get("monthly_forecasts")
 
