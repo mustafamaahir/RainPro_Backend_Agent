@@ -1,9 +1,6 @@
-# agents/preprocessing_agent.py
-import os
 import numpy as np
 import pandas as pd
-import joblib
-from langchain_core.runnables import RunnableConfig
+from langchain_core.runnables import RunnableConfig 
 
 FEATURES = [
     'RH2M', 'WS10M', 'T2M', 'WD10M',
@@ -12,7 +9,7 @@ FEATURES = [
 ]
 TARGET_COL = "PRECTOTCORR"
 
-def preprocessing_agent(state: dict, config: dict | None = None) -> dict:
+def preprocessing_agent(state: dict, config: RunnableConfig | None = None):
     """
     Preprocess NASA data for model readiness.
     Handles both daily and monthly datasets based on user intent.
@@ -27,31 +24,26 @@ def preprocessing_agent(state: dict, config: dict | None = None) -> dict:
     if df is None or df.empty:
         return {"error": "No NASA data found in state."}
 
-    # Determine scaler path
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    if mode == "daily":
-        scaler_path = os.path.join(BASE_DIR, "../models/scaler_daily.pkl")
-    else:
-        scaler_path = os.path.join(BASE_DIR, "../models/scaler_monthly.pkl")
+    # Choose scaler and other config depending on mode
+    scaler = config.get("models/scaler_daily.pkl") if mode == "daily" else config.get("models/scaler_monthly.pkl")
 
-    if not os.path.exists(scaler_path):
-        return {"error": f"Scaler file not found: {scaler_path}"}
-
-    # Load scaler
-    scaler = joblib.load(scaler_path)
-
+    # Common cleanup
     # Fill missing columns if not present
     for col in FEATURES + [TARGET_COL]:
         if col not in df.columns:
             df[col] = 0
 
-    df = df.replace(-999.0, np.nan).ffill().bfill()  # Fill missing values
+    # Replace missing flags and fill gaps
+    df = df.replace(-999.0, np.nan).ffill().bfill()
 
-    # --- DAILY preprocessing ---
+    # Daily preprocessing
     if mode == "daily":
+        # Fill missing and clip negatives
         for col in FEATURES + [TARGET_COL]:
+            df[col] = df[col].fillna(0)
             df[col] = df[col].clip(lower=0)
 
+        # Log-transform safely
         df["log_PRECTOTCORR"] = np.log1p(df[TARGET_COL])
         for col in FEATURES:
             df[f"log_{col}"] = np.log1p(df[col])
@@ -66,12 +58,16 @@ def preprocessing_agent(state: dict, config: dict | None = None) -> dict:
         if len(df) < 15:
             return {"error": "Not enough data to make daily prediction."}
 
+        # Prepare features
         final_features = [f"log_{col}" for col in FEATURES] + [
             "log_PRECTOTCORR_lag1", "log_PRECTOTCORR_lag3", "log_PRECTOTCORR_lag7",
             "rain_rolling_mean", "rain_rolling_std"
         ]
 
+        # Take last 15 days window
         window = df[final_features + ["log_PRECTOTCORR"]].tail(15).copy()
+
+        # Scale for model input
         scaled = scaler.transform(window)
         X_input = np.expand_dims(scaled, axis=0)
 
@@ -84,16 +80,22 @@ def preprocessing_agent(state: dict, config: dict | None = None) -> dict:
             "mode": "daily"
         }
 
-    # --- MONTHLY preprocessing ---
+    # Monthly preprocessing
     elif mode == "monthly":
-        df = df.reset_index().rename(columns={'index': 'DATE'})
+        # Reset index and rename
+        df.reset_index(inplace=True)
+        df.rename(columns={'index': 'DATE'}, inplace=True)
+
+        # Log-transform features
         df["log_PRECTOTCORR"] = np.log1p(df[TARGET_COL])
         for col in FEATURES:
             df[f"log_{col}"] = np.log1p(df[col])
 
+        # Create lag features (1, 3, 7 months)
         for lag in [1, 3, 7]:
             df[f"log_PRECTOTCORR_lag{lag}"] = df["log_PRECTOTCORR"].shift(lag)
 
+        # Rolling mean/std over 3 months
         df["rain_rolling_mean"] = df["log_PRECTOTCORR"].rolling(window=3).mean()
         df["rain_rolling_std"] = df["log_PRECTOTCORR"].rolling(window=3).std()
         df = df.dropna().copy()
@@ -101,12 +103,14 @@ def preprocessing_agent(state: dict, config: dict | None = None) -> dict:
         if len(df) < 7:
             return {"error": "Not enough data to compute lag7 for monthly prediction."}
 
+        # Prepare window and features
         final_features = [f"log_{col}" for col in FEATURES] + [
             "log_PRECTOTCORR_lag1", "log_PRECTOTCORR_lag3", "log_PRECTOTCORR_lag7",
             "rain_rolling_mean", "rain_rolling_std"
         ]
-
         window = df[final_features + ["log_PRECTOTCORR"]].tail(7).copy()
+
+        # Scale for model input
         scaled = scaler.transform(window)
         X_input = np.expand_dims(scaled, axis=0)
 

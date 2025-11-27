@@ -1,6 +1,6 @@
 import pandas as pd
 from fastapi import HTTPException
-from datetime import datetime, timedelta
+from datetime import datetime
 from app.utils.nasa_fetchers import nasa_daily, nasa_monthly
 from langchain_core.runnables import RunnableConfig
 
