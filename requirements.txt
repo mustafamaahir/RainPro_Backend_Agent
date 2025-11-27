@@ -17,3 +17,4 @@ python-dotenv
 requests
 tensorflow
 joblib
+scikit-learn
