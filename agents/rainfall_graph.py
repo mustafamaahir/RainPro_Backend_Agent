@@ -25,8 +25,11 @@ class AgentState(TypedDict):
     monthly_forecasts: Optional[Any]
     prediction_interpretation: Optional[str]
     error: Optional[str]
-    db: Optional[Session]  # ADD THIS LINE - the database session
-    query_id: Optional[int]  # ADD THIS TOO if not already tracking it elsewhere
+    db: Optional[Session]    
+    query_id: Optional[int]
+    status: Optional[str]
+    mode: Optional[str]    
+    location: Optional[Dict[str, float]]
 
 
 # ---------------------------

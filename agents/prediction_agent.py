@@ -180,7 +180,11 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
                 except Exception:
                     # If we can't re-scale (e.g., scaler expects a different shape), keep previous X_input
                     pass
-
+                logger.info(f"DAILY prediction complete. Forecasts: {forecasts}")
+                return {
+                        **state,
+                        "forecasts": forecasts
+                       }
             return {
                 **state,
                 "status": "success",
@@ -252,7 +256,11 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
                     X_input = np.expand_dims(scaler.transform(window_local)[-1:], axis=0)
                 except Exception:
                     pass
-
+                logger.info(f"MONTHLY prediction complete. Forecasts: {forecasts}")
+                return {
+                        **state,
+                        "monthly_forecasts": forecasts
+                   }
             return {
                 **state,
                 "status": "success",
