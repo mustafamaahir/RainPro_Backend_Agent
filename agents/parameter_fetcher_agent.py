@@ -1,15 +1,20 @@
 import pandas as pd
+import logging
 from fastapi import HTTPException
 from datetime import datetime
 from app.utils.nasa_fetchers import nasa_daily, nasa_monthly
 from langchain_core.runnables import RunnableConfig
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def parameter_fetcher_agent(state: dict, config: RunnableConfig | None = None):
     """
     Fetches NASA climate/environmental data for daily or monthly prediction.
     Updates state with 'nasa_parameters' DataFrame.
     """
-
+    logger.info("🚀 parameter_fetcher_agent started")
     # Extract location & mode
     latitude = state.get("latitude", 6.585)
     longitude = state.get("longitude", 3.983)

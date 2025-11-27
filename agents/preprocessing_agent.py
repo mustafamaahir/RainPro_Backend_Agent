@@ -1,7 +1,9 @@
+import logging
 import numpy as np
 import pandas as pd
 from langchain_core.runnables import RunnableConfig 
 
+logger = logging.getLogger(__name__)
 FEATURES = [
     'RH2M', 'WS10M', 'T2M', 'WD10M',
     'ALLSKY_SFC_SW_DWN', 'EVPTRNS', 'PS',
@@ -15,7 +17,7 @@ def preprocessing_agent(state: dict, config: RunnableConfig | None = None):
     Handles both daily and monthly datasets based on user intent.
     Includes cleaning, transformation, lag, and rolling features.
     """
-
+    logger.info("🚀 preprocessing_agent started")
     # Identify mode from intent (daily or monthly)
     intent = state.get("intent", {})
     mode = intent.get("mode", "daily").lower()

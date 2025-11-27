@@ -76,6 +76,7 @@ def inverse_transform_prediction(pred_scaled: float, scaler, last_row_scaled: np
 
 
 def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None = None) -> Dict[str, Any]:
+    logger.info("🚀 model_prediction_agent started")
     """
     Main agent invoked by LangGraph.
 

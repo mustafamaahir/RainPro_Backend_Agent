@@ -10,6 +10,9 @@ from agents.interpretation_agent import interpretation_agent
 from agents.supervisory_agent import supervisory_agent
 from agents.fallback_agent import fallback_agent  # for errors/unrelated intents
 from langchain_core.runnables import RunnableConfig
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AgentState(TypedDict):
     session_id: Optional[int]
@@ -38,12 +41,20 @@ class AgentState(TypedDict):
 def route_intent(state: AgentState) -> str:
     intent = state.get("intent") or {}
     mode = intent.get("mode")
+    
+    logger.info(f"🔍 route_intent called - intent: {intent}, mode: {mode}")
+    
     if state.get("error") or not mode:
+        logger.info("❌ Routing to fallback (error or no mode)")
         return "fallback"
     if mode.lower() == "daily":
+        logger.info("✅ Routing to daily_path")
         return "daily_path"
     if mode.lower() == "monthly":
+        logger.info("✅ Routing to monthly_path")
         return "monthly_path"
+    
+    logger.info("❌ Routing to fallback (no match)")
     return "fallback"
 
 # ---------------------------
@@ -51,7 +62,6 @@ def route_intent(state: AgentState) -> str:
 # ---------------------------
 def build_rainfall_graph():
     workflow = StateGraph(AgentState)
-
     # ---------------------------
     # Nodes
     # ---------------------------
