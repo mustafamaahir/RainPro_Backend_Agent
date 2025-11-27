@@ -23,7 +23,7 @@ def preprocessing_agent(state: dict, config: RunnableConfig | None = None):
     # Load scaler from config
     if config is None or "configurable" not in config:
         return {"error": "Scaler/model config missing."}
-    scaler_path = config.configurable.get("models/scaler_daily.pkl") if mode=="daily" else config.configurable.get("models/scaler_monthly.pkl")
+    scaler_path = config.get("models/scaler_daily.pkl") if mode == "daily" else config.get("models/scaler_monthly.pkl")
     import joblib
     scaler = joblib.load(scaler_path)
 
