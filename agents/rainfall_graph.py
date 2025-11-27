@@ -55,15 +55,15 @@ def build_rainfall_graph():
     workflow = StateGraph(AgentState)
 
     # Nodes (The Agents)
-    workflow.add_node("fetch_query", userquery_fetcher_agent)
-    workflow.add_node("detect_intent", intent_detection_agent)
-    workflow.add_node("fetch_parameters", parameter_fetcher_agent)
-    workflow.add_node("preprocess_data", preprocessing_agent)
-    workflow.add_node("predict_model", model_prediction_agent)
+    workflow.add_node("fetch_query", userquery_fetcher_agent, config = None)
+    workflow.add_node("detect_intent", intent_detection_agent, config = None)
+    workflow.add_node("fetch_parameters", parameter_fetcher_agent, config = None)
+    workflow.add_node("preprocess_data", preprocessing_agent, config = None)
+    workflow.add_node("predict_model", model_prediction_agent, config = None)
     workflow.add_node("interpret_result", interpretation_agent, config = None)
-    workflow.add_node("supervise_and_save", supervisory_agent)
+    workflow.add_node("supervise_and_save", supervisory_agent, config = None)
     # Fallback for clean error/unrelated handling
-    workflow.add_node("fallback", fallback_agent)
+    workflow.add_node("fallback", fallback_agent, config = None)
 
 
 
