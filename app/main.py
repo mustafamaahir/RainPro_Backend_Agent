@@ -46,32 +46,6 @@ app.include_router(user_input.router)
 app.include_router(chatbot.router)
 app.include_router(forecast.router)
 
-@app.post("/admin/update-weekly-chart")
-async def manual_weekly():
-    generate_weekly_forecast()
-    return {"status": "ok"}
-
-@app.post("/admin/update-monthly-chart")
-async def manual_monthly():
-    generate_monthly_forecast()
-    return {"status": "ok"}
-
-scheduler = None
-
-@app.on_event("startup")
-async def startup_event():
-    """Start background scheduler for chart updates"""
-    global scheduler
-    scheduler = start_scheduler()
-    logger.info("✅ Chart update scheduler started")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Shutdown scheduler"""
-    if scheduler:
-        scheduler.shutdown()
-        logger.info("✅ Scheduler shut down")
-
 # ---- Seed dummy data at startup ----
 @app.on_event("startup")
 def seed_dummy_data():
@@ -116,6 +90,35 @@ def seed_dummy_data():
             print("✅ Forecast data already exists — skipping dummy insert.")
     finally:
         db.close()
+
+
+# ---- Scheduled Tasks Endpoints ----
+
+@app.post("/admin/update-weekly-chart")
+async def manual_weekly():
+    generate_weekly_forecast()
+    return {"status": "ok"}
+
+@app.post("/admin/update-monthly-chart")
+async def manual_monthly():
+    generate_monthly_forecast()
+    return {"status": "ok"}
+
+scheduler = None
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background scheduler for chart updates"""
+    global scheduler
+    scheduler = start_scheduler()
+    logger.info("✅ Chart update scheduler started")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Shutdown scheduler"""
+    if scheduler:
+        scheduler.shutdown()
+        logger.info("✅ Scheduler shut down")
 
 
 @app.api_route("/status", methods=["GET", "HEAD"])
