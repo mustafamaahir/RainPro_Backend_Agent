@@ -33,13 +33,13 @@ def post_daily_forecast(items: schemas.ForecastList, db: Session = Depends(get_d
     # ✅ Use dummy data if nothing or invalid data is provided
     if not items_list or not isinstance(items_list, list) or len(items_list) == 0:
         items_list = [
-            {"date": "2021-10-10", "rainfall": 14},
-            {"date": "2021-10-11", "rainfall": 7},
-            {"date": "2021-10-12", "rainfall": 20},
-            {"date": "2021-10-13", "rainfall": 0},
-            {"date": "2021-10-14", "rainfall": 11},
-            {"date": "2021-10-15", "rainfall": 5},
-            {"date": "2021-10-16", "rainfall": 17}
+                {"date": "2025-11-23", "rainfall": 14},
+                {"date": "2025-11-24", "rainfall": 7},
+                {"date": "2025-11-25", "rainfall": 20},
+                {"date": "2025-11-26", "rainfall": 12},
+                {"date": "2025-11-27", "rainfall": 9},
+                {"date": "2025-11-28", "rainfall": 18},
+                {"date": "2025-11-29", "rainfall": 6}
         ]
 
     # Optional validation: ensure approximately 7 entries (agent responsibility)
@@ -134,9 +134,9 @@ def post_monthly_forecast(items: schemas.ForecastList, db: Session = Depends(get
     # ✅ Use dummy data if nothing or invalid data is provided
     if not items_list or not isinstance(items_list, list) or len(items_list) == 0:
         items_list = [
-            {"date": "2021-10-10", "rainfall": 14},
-            {"date": "2021-11-11", "rainfall": 7},
-            {"date": "2021-12-12", "rainfall": 20}
+                {"date": "2025-11-30", "rainfall": 10},
+                {"date": "2025-12-31", "rainfall": 2},
+                {"date": "2026-01-31", "rainfall": 0.5}
         ]
 
     # Optional validation: ensure approximately 3 entries (agent responsibility)
