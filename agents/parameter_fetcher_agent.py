@@ -14,6 +14,7 @@ def parameter_fetcher_agent(state: dict, config: RunnableConfig | None = None):
     Updates state with 'nasa_parameters' DataFrame.
     """
     logger.info("🚀 parameter_fetcher_agent started")
+    
     # Extract location & mode from intent
     intent = state.get("intent", {})
     mode = intent.get("mode", "daily").lower()
@@ -22,8 +23,19 @@ def parameter_fetcher_agent(state: dict, config: RunnableConfig | None = None):
     start_year = intent.get("start_year", 2022)
     end_year = intent.get("end_year", datetime.utcnow().year)
     days = intent.get("days", 7)
-    fetch_days = max(days + 20, 30)
-    logger.info(f"📍 Location: ({latitude}, {longitude}), Mode: {mode}, Days: {days}")
+    months = intent.get("months", 6)
+    
+    # Calculate how much data to fetch (need extra for feature engineering)
+    if mode == "daily":
+        # Need at least 7 days for lag7 + 7 days for rolling window + requested days
+        fetch_days = max(days + 20, 30)  # Fetch at least 30 days of history
+        logger.info(f"📍 Location: ({latitude}, {longitude}), Mode: daily, Requested days: {days}, Fetching: {fetch_days}")
+    else:  # monthly
+        # Need at least 7 months for lag7 + 3 months for rolling window + requested months
+        # Ensure we have enough years of data
+        years_needed = max((months + 10) // 12, 2)  # At least 2 years
+        start_year = end_year - years_needed
+        logger.info(f"📍 Location: ({latitude}, {longitude}), Mode: monthly, Requested months: {months}, Years: {start_year}-{end_year}")
 
     # Fetch NASA data
     try:
@@ -32,7 +44,7 @@ def parameter_fetcher_agent(state: dict, config: RunnableConfig | None = None):
             df = nasa_monthly(latitude=latitude, longitude=longitude,
                               start_year=start_year, end_year=end_year)
         elif mode == "daily":
-            logger.info(f"🌤️ Fetching DAILY data: last {days} days")
+            logger.info(f"🌤️ Fetching DAILY data: last {fetch_days} days")
             df = nasa_daily(latitude=latitude, longitude=longitude, days=fetch_days)
         else:
             logger.error(f"❌ Invalid mode: {mode}")
