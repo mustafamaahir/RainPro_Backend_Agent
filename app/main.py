@@ -7,13 +7,20 @@ from app.database import init_db, SessionLocal
 from app.routers import auth, user_input, chatbot, forecast
 import app.models as models
 from datetime import datetime
+from app.tasks.scheduled_forecasts import start_scheduler
+from app.tasks.scheduled_forecasts import generate_weekly_forecast, generate_monthly_forecast
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Rainfall Project SAIL - Forecast API",
     version="1.0.0",
     description="Backend for user queries, agent-posted forecasts, and PNG charts for frontend."
 )
+
+
 
 # ---- Initialize database and tables ----
 init_db()
@@ -38,6 +45,32 @@ app.include_router(auth.router)
 app.include_router(user_input.router)
 app.include_router(chatbot.router)
 app.include_router(forecast.router)
+
+@app.post("/admin/update-weekly-chart")
+async def manual_weekly():
+    generate_weekly_forecast()
+    return {"status": "ok"}
+
+@app.post("/admin/update-monthly-chart")
+async def manual_monthly():
+    generate_monthly_forecast()
+    return {"status": "ok"}
+
+scheduler = None
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background scheduler for chart updates"""
+    global scheduler
+    scheduler = start_scheduler()
+    logger.info("✅ Chart update scheduler started")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Shutdown scheduler"""
+    if scheduler:
+        scheduler.shutdown()
+        logger.info("✅ Scheduler shut down")
 
 # ---- Seed dummy data at startup ----
 @app.on_event("startup")
