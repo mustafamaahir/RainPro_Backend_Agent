@@ -83,19 +83,19 @@ def seed_dummy_data():
             print("🌱 No forecast data found — inserting dummy data...")
 
             dummy_daily = [
-                {"date": "2021-10-10", "rainfall": 14},
-                {"date": "2021-10-11", "rainfall": 7},
-                {"date": "2021-10-12", "rainfall": 20},
-                {"date": "2021-10-13", "rainfall": 12},
-                {"date": "2021-10-14", "rainfall": 9},
-                {"date": "2021-10-15", "rainfall": 18},
-                {"date": "2021-10-16", "rainfall": 6}
+                {"date": "2025-11-23", "rainfall": 14},
+                {"date": "2025-11-24", "rainfall": 7},
+                {"date": "2025-11-25", "rainfall": 20},
+                {"date": "2025-11-26", "rainfall": 12},
+                {"date": "2025-11-27", "rainfall": 9},
+                {"date": "2025-11-28", "rainfall": 18},
+                {"date": "2025-11-29", "rainfall": 6}
             ]
 
             dummy_monthly = [
-                {"date": "2021-10-10", "rainfall": 14},
-                {"date": "2021-11-11", "rainfall": 7},
-                {"date": "2021-12-12", "rainfall": 20}
+                {"date": "2025-11-30", "rainfall": 10},
+                {"date": "2025-12-31", "rainfall": 2},
+                {"date": "2026-01-31", "rainfall": 0.5}
             ]
 
             db.add_all([
