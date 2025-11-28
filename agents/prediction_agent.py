@@ -35,8 +35,8 @@ logger.setLevel(logging.INFO)
 
 # Default artifact paths (adjust if your project layout differs)
 DEFAULTS = {
-    "models/rainfall_daily_predictor.h5": "RainSight/models/rainfall_daily_predictor.h5",
-    "models/rainfall_monthly_predictor.h5": "RainSight/models/rainfall_monthly_predictor.h5",
+    "models/rainfall_daily_predictor.h5": "models/rainfall_daily_predictor.h5",  # ✅ CORRECT
+    "models/rainfall_monthly_predictor.h5": "models/rainfall_monthly_predictor.h5",
     "models/scaler_daily.pkl": "models/scaler_daily.pkl",
     "models/scaler_monthly.pkl": "models/scaler_monthly.pkl",
 }
