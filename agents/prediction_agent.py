@@ -37,8 +37,8 @@ logger.setLevel(logging.INFO)
 DEFAULTS = {
     "models/rainfall_daily_predictor.h5": "RainSight/models/rainfall_daily_predictor.h5",
     "models/rainfall_monthly_predictor.h5": "RainSight/models/rainfall_monthly_predictor.h5",
-    "models/scaler_daily.pkl": "RainSight/models/scaler_daily.pkl",
-    "models/scaler_monthly.pkl": "RainSight/models/scaler_monthly.pkl",
+    "models/scaler_daily.pkl": "models/scaler_daily.pkl",
+    "models/scaler_monthly.pkl": "models/scaler_monthly.pkl",
 }
 
 
