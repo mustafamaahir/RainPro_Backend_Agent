@@ -45,18 +45,23 @@ def intent_detection_agent(state: dict, config: RunnableConfig | None = None) ->
 
     # ---- 2. Prompt engineering ----
     system_prompt = (
-        "You are a weather intent classifier.\n"
-        "Classify the user query as DAILY or MONTHLY.\n\n"
-        "Rules:\n"
-        "- 'today', 'tomorrow', 'next 5 days' => DAILY\n"
-        "- 'this month', 'next month', 'monthly' => MONTHLY\n\n"
-        "Respond ONLY in valid JSON format:\n"
-        "{\n"
-        '  "mode": "daily|monthly",\n'
-        '  "confidence": 0.00,\n'
-        '  "explanation": "reason"\n'
-        "}"
-    )
+    "You are a weather intent classifier.\n"
+    "Classify the user query and extract parameters.\n\n"
+    "Rules:\n"
+    "- 'today', 'tomorrow', 'next 5 days' => DAILY\n"
+    "- 'this month', 'next month', 'monthly' => MONTHLY\n"
+    "- Extract the NUMBER of days/months from the query\n"
+    "  Examples: 'five days' = 5, 'next week' = 7, '3 months' = 3\n"
+    "- If no number specified, use: daily=7 days, monthly=6 months\n\n"
+    "Respond ONLY in valid JSON format:\n"
+    "{\n"
+    '  "mode": "daily|monthly",\n'
+    '  "days": 5,\n'  # For daily forecasts
+    '  "months": 3,\n'  # For monthly forecasts
+    '  "confidence": 0.95,\n'
+    '  "explanation": "reason"\n'
+    "}"
+)
 
     user_prompt = f"User Query: {user_query}"
 

@@ -35,7 +35,7 @@ logger.setLevel(logging.INFO)
 
 # Default artifact paths (adjust if your project layout differs)
 DEFAULTS = {
-    "models/rainfall_daily_predictor.h5": "models/rainfall_daily_predictor.h5",  # ✅ CORRECT
+    "models/rainfall_daily_predictor.h5": "models/rainfall_daily_predictor.h5",
     "models/rainfall_monthly_predictor.h5": "models/rainfall_monthly_predictor.h5",
     "models/scaler_daily.pkl": "models/scaler_daily.pkl",
     "models/scaler_monthly.pkl": "models/scaler_monthly.pkl",
@@ -204,6 +204,7 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
         elif mode == "monthly":
             logger.info("📅 Starting MONTHLY prediction...")
             
+            # Load artifacts
             try:
                 logger.info(f"Loading model from: {monthly_model_path}")
                 model = load_model(monthly_model_path, compile=False)
@@ -224,7 +225,10 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
             months = int(intent.get("months", 6))
             logger.info(f"🔢 Forecasting for {months} months")
 
+            # Ensure shapes are correct
             last_row_scaled = np.array(scaled[-1:]).reshape(1, -1)
+
+            # We operate on a copy of the window so we can append simulated rows
             window_local = window.copy().reset_index(drop=True)
 
             for month in range(1, months + 1):
@@ -241,14 +245,17 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
                     "predicted_rainfall_mm": round(float(rainfall_mm), 3)
                 })
 
-                # Build next row
+                # Build next row inputs for iterative forecasting
                 new_row = {}
                 for col in final_features:
+                    # If final_features includes the target column (log_PRECTOTCORR) skip copying it
                     if col in window_local.columns and col != "log_PRECTOTCORR":
                         new_row[col] = window_local[col].iloc[-1]
                     else:
+                        # If missing in existing window, set 0
                         new_row[col] = window_local[col].iloc[-1] if col in window_local.columns else 0.0
 
+                # lags
                 lag1 = window_local["log_PRECTOTCORR"].iloc[-1]
                 lag3 = window_local["log_PRECTOTCORR"].iloc[-3] if len(window_local) >= 3 else lag1
                 lag7 = window_local["log_PRECTOTCORR"].iloc[-7] if len(window_local) >= 7 else lag1
@@ -262,13 +269,15 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
                 new_row["rain_rolling_std"] = float(np.std(roll_vals))
                 new_row["log_PRECTOTCORR"] = float(np.log1p(rainfall_mm))
 
+                # Append and keep window size consistent (tail 7 used in preprocessing for monthly)
                 window_local = pd.concat([window_local, pd.DataFrame([new_row])], ignore_index=True).tail(7)
 
-                # Try update scaled + X_input similarly to daily
+                # Recompute scaled and X_input for next iteration
                 try:
                     last_row_scaled = scaler.transform(window_local)[-1:].reshape(1, -1)
                     X_input = np.expand_dims(scaler.transform(window_local)[-1:], axis=0)
                 except Exception:
+                    # If we can't re-scale (e.g., scaler expects a different shape), keep previous X_input
                     pass
 
             # AFTER the loop completes
