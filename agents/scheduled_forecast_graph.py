@@ -8,6 +8,7 @@ Used by background tasks to update chart data weekly/monthly.
 
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, Dict, Any, Optional
+from sqlalchemy.orm import Session
 from agents.parameter_fetcher_agent import parameter_fetcher_agent
 from agents.preprocessing_agent import preprocessing_agent
 from agents.prediction_agent import model_prediction_agent
@@ -29,6 +30,7 @@ class ScheduledForecastState(TypedDict):
     monthly_forecasts: Optional[Any]
     error: Optional[str]
     forecast_published: Optional[bool]
+    db: Optional[Session] 
 
 
 def build_scheduled_forecast_graph():

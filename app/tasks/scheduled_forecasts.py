@@ -9,6 +9,7 @@ No chatbot responses, just prediction data → forecast endpoints.
 
 import logging
 from datetime import datetime
+from app.database import SessionLocal
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from agents.scheduled_forecast_graph import build_scheduled_forecast_graph
@@ -28,6 +29,7 @@ def generate_weekly_forecast():
     try:
         logger.info("🔄 Starting scheduled weekly forecast for chart...")
         
+        db = SessionLocal()
         # Minimal state - just what's needed for predictions
         initial_state = {
             "intent": {
@@ -44,7 +46,8 @@ def generate_weekly_forecast():
             "forecasts": None,
             "monthly_forecasts": None,
             "error": None,
-            "forecast_published": None
+            "forecast_published": None,
+            "db":db
         }
         
         # Run the simplified workflow
@@ -69,6 +72,7 @@ def generate_monthly_forecast():
     """
     try:
         logger.info("🔄 Starting scheduled monthly forecast for chart...")
+        db = SessionLocal()
         
         # Minimal state - just what's needed for predictions
         initial_state = {
@@ -88,7 +92,8 @@ def generate_monthly_forecast():
             "forecasts": None,
             "monthly_forecasts": None,
             "error": None,
-            "forecast_published": None
+            "forecast_published": None,
+            "db":db
         }
         
         # Run the simplified workflow
