@@ -1,108 +1,85 @@
 # agents/forecast_publisher_agent.py
 import logging
-import httpx  # Keep httpx but use sync
 from datetime import datetime, timedelta
 from typing import Dict, Any
+import json
+from app import models
 
 logger = logging.getLogger(__name__)
 
-API_BASE_URL = "https://rainfall-forecast-api-production.up.railway.app"
-
 
 def forecast_publisher_agent(state: Dict[str, Any], config=None) -> Dict[str, Any]:
-    """Publishes forecasts to endpoints"""
+    """Direct database insert - no HTTP calls"""
     logger.info("🚀 forecast_publisher_agent started")
     
     mode = state.get("intent", {}).get("mode", "daily").lower()
     forecasts = state.get("forecasts") if mode == "daily" else state.get("monthly_forecasts")
+    db = state.get("db")
     
-    if not forecasts:
-        logger.info("⏭️ No forecasts to publish")
+    if not forecasts or not db:
+        logger.info("⏭️ No forecasts or DB session")
         return state
     
     try:
-        # Use synchronous httpx.Client (not AsyncClient)
-        with httpx.Client(timeout=60.0) as client:  # 60 second timeout
+        if mode == "daily":
+            today = datetime.now()
+            days_until_sunday = (6 - today.weekday()) % 7
+            if days_until_sunday == 0:
+                days_until_sunday = 7
+            start_date = today + timedelta(days=days_until_sunday)
             
-            if mode == "daily":
-                today = datetime.now()
-                days_until_sunday = (6 - today.weekday()) % 7
-                if days_until_sunday == 0:
-                    days_until_sunday = 7
-                start_date = today + timedelta(days=days_until_sunday)
-                
-                forecast_data = []
-                for i, forecast in enumerate(forecasts[:7]):
-                    forecast_date = start_date + timedelta(days=i)
-                    forecast_data.append({
-                        "date": forecast_date.strftime("%Y-%m-%d"),
-                        "rainfall": round(forecast.get("predicted_rainfall_mm", 0), 2)
-                    })
-                
-                while len(forecast_data) < 7:
-                    last_date = datetime.strptime(forecast_data[-1]["date"], "%Y-%m-%d") if forecast_data else start_date
-                    next_date = last_date + timedelta(days=1)
-                    forecast_data.append({"date": next_date.strftime("%Y-%m-%d"), "rainfall": 0.0})
-                
-                endpoint = f"{API_BASE_URL}/daily_forecast"
-                logger.info(f"📤 Posting to {endpoint}")
-                logger.info(f"📊 Data: {forecast_data}")
-                
-                response = client.post(
-                    endpoint,
-                    json={"root": forecast_data},
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code in [200, 201]:
-                    logger.info("✅ Daily forecast published")
-                    state["forecast_published"] = True
-                else:
-                    logger.error(f"❌ Failed: {response.status_code} - {response.text}")
-                    state["forecast_published"] = False
+            forecast_data = []
+            for i, forecast in enumerate(forecasts[:7]):
+                forecast_date = start_date + timedelta(days=i)
+                forecast_data.append({
+                    "date": forecast_date.strftime("%Y-%m-%d"),
+                    "rainfall": round(forecast.get("predicted_rainfall_mm", 0), 2)
+                })
             
-            elif mode == "monthly":
-                today = datetime.now()
-                forecast_data = []
-                
-                for i, forecast in enumerate(forecasts[:3]):
-                    month_offset = i
-                    year = today.year + (today.month + month_offset - 1) // 12
-                    month = (today.month + month_offset - 1) % 12 + 1
-                    forecast_date = datetime(year, month, 1)
-                    
-                    forecast_data.append({
-                        "date": forecast_date.strftime("%Y-%m-%d"),
-                        "rainfall": round(forecast.get("predicted_rainfall_mm", 0), 2)
-                    })
-                
-                while len(forecast_data) < 3:
-                    last_date = datetime.strptime(forecast_data[-1]["date"], "%Y-%m-%d") if forecast_data else datetime(today.year, today.month, 1)
-                    if last_date.month == 12:
-                        next_date = datetime(last_date.year + 1, 1, 1)
-                    else:
-                        next_date = datetime(last_date.year, last_date.month + 1, 1)
-                    forecast_data.append({"date": next_date.strftime("%Y-%m-%d"), "rainfall": 0.0})
-                
-                endpoint = f"{API_BASE_URL}/monthly_forecast"
-                logger.info(f"📤 Posting to {endpoint}")
-                logger.info(f"📊 Data: {forecast_data}")
-                
-                response = client.post(
-                    endpoint,
-                    json={"root": forecast_data},
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code in [200, 201]:
-                    logger.info("✅ Monthly forecast published")
-                    state["forecast_published"] = True
-                else:
-                    logger.error(f"❌ Failed: {response.status_code} - {response.text}")
-                    state["forecast_published"] = False
+            while len(forecast_data) < 7:
+                last_date = datetime.strptime(forecast_data[-1]["date"], "%Y-%m-%d") if forecast_data else start_date
+                forecast_data.append({"date": (last_date + timedelta(days=1)).strftime("%Y-%m-%d"), "rainfall": 0.0})
+            
+            row = models.Forecast(
+                forecast_type="daily",
+                forecast_data=json.dumps(forecast_data),
+                created_at=datetime.utcnow()
+            )
+            db.add(row)
+            db.commit()
+            logger.info(f"✅ Daily saved: {forecast_data}")
+            state["forecast_published"] = True
+        
+        elif mode == "monthly":
+            today = datetime.now()
+            forecast_data = []
+            
+            for i, forecast in enumerate(forecasts[:3]):
+                year = today.year + (today.month + i - 1) // 12
+                month = (today.month + i - 1) % 12 + 1
+                forecast_data.append({
+                    "date": datetime(year, month, 1).strftime("%Y-%m-%d"),
+                    "rainfall": round(forecast.get("predicted_rainfall_mm", 0), 2)
+                })
+            
+            while len(forecast_data) < 3:
+                last = datetime.strptime(forecast_data[-1]["date"], "%Y-%m-%d")
+                next_month = datetime(last.year + 1, 1, 1) if last.month == 12 else datetime(last.year, last.month + 1, 1)
+                forecast_data.append({"date": next_month.strftime("%Y-%m-%d"), "rainfall": 0.0})
+            
+            row = models.Forecast(
+                forecast_type="monthly",
+                forecast_data=json.dumps(forecast_data),
+                created_at=datetime.utcnow()
+            )
+            db.add(row)
+            db.commit()
+            logger.info(f"✅ Monthly saved: {forecast_data}")
+            state["forecast_published"] = True
     
     except Exception as e:
-        logger.exception(f"❌ Error publishing: {e}")
+        logger.exception(f"❌ Error: {e}")
+        db.rollback()
         state["forecast_published"] = False
     
     return state
