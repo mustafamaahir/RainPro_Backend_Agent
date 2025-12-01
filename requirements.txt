@@ -19,3 +19,4 @@ tensorflow
 joblib
 scikit-learn
 apscheduler
+httpx
