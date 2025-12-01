@@ -55,7 +55,9 @@ Instructions:
 4. Be practical, friendly, and farmer-focused
 5. Keep response concise (3-4 sentences)
 
-Agricultural Recommendation:"""
+Agricultural Recommendation:
+
+"""
 
         try:
             response = client.chat.completions.create(
