@@ -32,7 +32,7 @@ def supervisory_agent(state: dict, config: RunnableConfig | None = None):
     try:
         # Post the payload to the dedicated FastAPI endpoint
         response = requests.post(
-            f"{BASE_API_URL}/chatbot_response",
+            f"{BASE_API_URL}/user_input",
             data=json.dumps(payload),
             headers={"Content-Type": "application/json"}
         )

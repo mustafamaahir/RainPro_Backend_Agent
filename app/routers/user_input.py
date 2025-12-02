@@ -48,13 +48,14 @@ def run_agent_workflow(initial_state: AgentState, graph_config_data: dict):
         db.close()   # ✅ Proper cleanup
 
 
-
 @router.post("/user_input")
 def post_user_input(
     payload: schemas.UserInputIn,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
+    """
+    User posts query → Agent processes → Returns response immediately
+    """
     # Validate user
     user = db.query(models.User).filter(models.User.id == payload.user_id).first()
     if not user:
@@ -70,32 +71,47 @@ def post_user_input(
     db.commit()
     db.refresh(row)
 
-    graph_config_data = {
-        "user_id": payload.user_id,
-        "session_id": row.id,
-        "latitude": 6.585,
-        "longitude": 3.983,
-        **MODEL_CONFIG
-    }
-
+    # Prepare initial state
     initial_state = AgentState(
         session_id=row.id,
         user_id=row.user_id,
         user_query=row.query_text,
-        db=db,  # PASS DB SESSION IN STATE
-        query_id=row.id
+        db=db,
+        query_id=row.id,
+        intent=None,
+        nasa_parameters=None,
+        preprocessed_data=None,
+        preprocessed_window=None,
+        scaled=None,
+        final_features=None,
+        forecasts=None,
+        monthly_forecasts=None,
+        prediction_interpretation=None,
+        error=None,
+        forecast_published=None
     )
 
-    background_tasks.add_task(
-        run_agent_workflow,
-        initial_state,
-        graph_config_data
-    )
-
-    return {
-        "status": "processing_started",
-        "query_id": row.id,
-        "user_id": row.user_id,
-        "created_at": row.created_at.isoformat(),
-        "message": "Rainfall prediction started."
-    }
+    # Run agent workflow synchronously (blocks until complete)
+    try:
+        logger.info(f"Running LangGraph for query {row.id}")
+        result = RAIN_GRAPH.invoke(initial_state)
+        
+        # Response already saved to DB by interpretation_agent
+        # Return the response immediately
+        return {
+            "status": "success",
+            "query_id": row.id,
+            "user_id": row.user_id,
+            "query_text": row.query_text,
+            "response_text": result.get("prediction_interpretation", "No response generated"),
+            "response_time": datetime.utcnow().isoformat(),
+            "error": result.get("error")
+        }
+    
+    except Exception as e:
+        logger.error(f"LangGraph failed for query {row.id}: {e}")
+        return {
+            "status": "error",
+            "query_id": row.id,
+            "error": str(e)
+        }
