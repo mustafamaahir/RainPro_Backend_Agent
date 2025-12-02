@@ -9,48 +9,6 @@ from app import models, schemas
 router = APIRouter(prefix="", tags=["Chatbot"])
 
 
-@router.post("/chatbot_response")
-def agent_post_response(payload: schemas.AgentResponseIn, db: Session = Depends(get_db)):
-    """
-    Agent posts a textual response for a user's query.
-    If query_id is provided, update that query; otherwise update the latest query for the user.
-    """
-    # Ensure user exists
-    user = db.query(models.User).filter(models.User.id == payload.user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Find target query to update
-    if payload.query_id:
-        target = db.query(models.UserQuery).filter(
-            models.UserQuery.id == payload.query_id,
-            models.UserQuery.user_id == payload.user_id
-        ).first()
-        if not target:
-            raise HTTPException(status_code=404, detail="Query not found for given query_id and user")
-    else:
-        target = db.query(models.UserQuery).filter(
-            models.UserQuery.user_id == payload.user_id
-        ).order_by(models.UserQuery.created_at.desc()).first()
-        if not target:
-            raise HTTPException(status_code=404, detail="No queries found for that user")
-
-    # Update response fields
-    target.response_text = payload.response_text
-    target.response_time = datetime.utcnow()
-
-    db.add(target)
-    db.commit()
-    db.refresh(target)
-
-    return {
-        "status": "success",
-        "query_id": target.id,
-        "user_id": payload.user_id
-    }
-
-
-
 @router.get("/chatbot_response")
 def get_latest_response(user_id: int = Query(...), db: Session = Depends(get_db)):
     """
