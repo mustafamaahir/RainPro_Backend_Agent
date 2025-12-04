@@ -20,8 +20,7 @@ def forecast_publisher_agent(state: Dict[str, Any], config=None) -> Dict[str, An
         return state
 
     try:
-        timeout = httpx.Timeout(connect=10.0, read=60.0, write=30.0)
-        with httpx.Client(timeout=timeout) as client:  # generous timeout for slow network
+        with httpx.Client(timeout=120.0) as client:  # generous timeout for slow network
 
             if mode == "daily":
                 # --- Determine current week's Sunday as start_date ---
