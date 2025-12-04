@@ -53,7 +53,6 @@ def forecast_publisher_agent(state: Dict[str, Any], config=None) -> Dict[str, An
                             json=forecast_data,  # ✅ send raw list
                             headers={"Content-Type": "application/json"}
 )
-                )
 
                 if response.status_code in [200, 201]:
                     logger.info("✅ Weekly daily forecast published successfully")
