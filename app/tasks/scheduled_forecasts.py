@@ -136,8 +136,8 @@ def start_scheduler():
     )
     
     # Optional: Run once at startup for testing
-    # scheduler.add_job(generate_weekly_forecast, id='startup_weekly')
-    # scheduler.add_job(generate_monthly_forecast, id='startup_monthly')
+    scheduler.add_job(generate_weekly_forecast, id='startup_weekly')
+    scheduler.add_job(generate_monthly_forecast, id='startup_monthly')
     
     scheduler.start()
     logger.info("✅ Forecast scheduler started")
