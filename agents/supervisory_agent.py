@@ -1,53 +1,35 @@
+from datetime import datetime
 import requests
 import json
 import logging
+from app import models
 from langchain_core.runnables import RunnableConfig
 
 logger = logging.getLogger(__name__)
 
-# Define the local URL where the FastAPI app is running
-# NOTE: Replace with the actual base URL
-BASE_API_URL = "https://rainfall-forecast-api-production.up.railway.app" 
 
-def supervisory_agent(state: dict, config: RunnableConfig | None = None):
-    """
-    Supervisory agent that POSTs the final result to the FastAPI endpoint 
-    for database persistence, running asynchronously from the main thread.
-    """
+def supervisory_agent(state: dict, config=None):
+    """Save response to database"""
     
-    query_id = state.get("session_id")
-    final_response = state.get("prediction_interpretation", 
-                               "Processing complete, but no interpretation generated.")
-
-    if not query_id:
-        logger.error("Cannot post response: session_id is missing.")
-        return {"error": "Missing session ID for database update."}
-
-    payload = {
-        "user_id": state.get("user_id"),
-        "response_text": final_response,
-        "query_id": query_id
-    }
+    db = state.get("db")
+    query_id = state.get("query_id") or state.get("session_id")
+    response_text = state.get("prediction_interpretation")
+    
+    if not db:
+        logger.error("No DB session")
+        return state
     
     try:
-        # Post the payload to the dedicated FastAPI endpoint
-        response = requests.post(
-            f"{BASE_API_URL}/user_input",
-            data=json.dumps(payload),
-            headers={"Content-Type": "application/json"}
-        )
-        response.raise_for_status() # Raise exception for bad status codes (4xx or 5xx)
-        
-        logger.info(f"Successfully posted response to DB via API for query_id={query_id}")
-        return {
-            **state,
-            "status": "DB_Update_via_API_Success",
-        }
-
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to post response via API: {e}")
-        return {
-            **state,
-            "error": f"Failed to save response via API: {e}",
-            "status": "DB_Update_Failed"
-        }
+        # Direct database update (no HTTP call)
+        query_row = db.query(models.UserQuery).filter(models.UserQuery.id == query_id).first()
+        if query_row:
+            query_row.response_text = response_text
+            query_row.response_time = datetime.utcnow()
+            query_row.is_completed = True
+            db.commit()
+            logger.info(f"✅ Response saved for query_id={query_id}")
+    except Exception as e:
+        logger.error(f"❌ Failed to save response: {e}")
+        db.rollback()
+    
+    return state

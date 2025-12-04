@@ -44,23 +44,53 @@ def intent_detection_agent(state: dict, config: RunnableConfig | None = None) ->
     logger.info(f"IntentDetectionAgent running for query: {user_query}")
 
     # ---- 2. Prompt engineering ----
-    system_prompt = (
-    "You are a weather intent classifier.\n"
-    "Classify the user query and extract parameters.\n\n"
-    "Rules:\n"
-    "- 'today', 'tomorrow', 'next 5 days' => DAILY\n"
-    "- 'this month', 'next month', 'monthly' => MONTHLY\n"
-    "- Extract the NUMBER of days/months from the query\n"
-    "  Examples: 'five days' = 5, 'next week' = 7, '3 months' = 3\n"
-    "- If no number specified, use: daily=7 days, monthly=6 months\n\n"
-    "Respond ONLY in valid JSON format:\n"
-    "{\n"
-    '  "mode": "daily|monthly",\n'
-    '  "days": 5,\n'  # For daily forecasts
-    '  "months": 3,\n'  # For monthly forecasts
-    '  "confidence": 0.95,\n'
-    '  "explanation": "reason"\n'
-    "}"
+    system_prompt = (""""
+You are a professional Weather Intent Classifier. 
+Your job is to determine:
+- Whether the query requires a DAILY or MONTHLY forecast.
+- Extract all time-related values.
+- Convert number words to digits.
+- Output clean, correct JSON with zero hallucination.
+
+# CLASSIFICATION RULES
+A. DAILY triggers:
+- Mentions of days: "5 days", "eleven days", "in 10 days"
+- Weeks (converted to days): "2 weeks", "next week"
+- "today", "tomorrow", "this week", "next few days"
+
+B. MONTHLY triggers:
+- Mentions of months: "3 months", "next month", "this month"
+- Monthly context: "over the coming months", "monthly rainfall"
+
+# NUMBER EXTRACTION
+- Extract digits (e.g., 11 days)
+- Extract number words (one=1, two=2, three=3 … twenty=20)
+- Convert weeks to days (1 week=7 days, 2 weeks=14 days)
+- If both days and months appear, prefer days.
+
+# DEFAULTS (ONLY IF NO NUMBER FOUND)
+- DAILY → days: 7
+- MONTHLY → months: 1
+
+# OUTPUT FORMAT (STRICT)
+Return ONLY:
+
+{
+  "mode": "daily" | "monthly",
+  "days": <integer or null>,
+  "months": <integer or null>,
+  "confidence": <float between 0 and 1>,
+  "explanation": "<short reason>"
+}
+
+# RESTRICTIONS
+- No hallucination of numbers or fields.
+- No text outside JSON.
+- Confidence must reflect clarity.
+- Base all decisions strictly on the user query.
+
+# TASK
+Read the user’s query and return the correct JSON following all rules."""
 )
 
     user_prompt = f"User Query: {user_query}"
