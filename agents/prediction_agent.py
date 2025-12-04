@@ -111,7 +111,7 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
 
         logger.info(f"📁 Model path: {daily_model_path if mode == 'daily' else monthly_model_path}")
 
-        latitude = intent.get("latitude", 6.585)
+        latitude = intent.get("latitude", 6.5833)
         longitude = intent.get("longitude", 3.983)
 
         if mode == "daily":

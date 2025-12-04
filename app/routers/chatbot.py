@@ -8,7 +8,6 @@ from app import models, schemas
 
 router = APIRouter(prefix="", tags=["Chatbot"])
 
-
 @router.get("/chatbot_response")
 def get_latest_response(user_id: int = Query(...), db: Session = Depends(get_db)):
     """
