@@ -92,7 +92,7 @@ def forecast_publisher_agent(state: Dict[str, Any], config=None) -> Dict[str, An
 
                 response = client.post(
                     endpoint,
-                    json={"root": forecast_data},
+                    json=forecast_data,  # ✅ send raw list
                     headers={"Content-Type": "application/json"}
                 )
 
