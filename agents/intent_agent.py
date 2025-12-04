@@ -28,7 +28,7 @@ except Exception as e:
 
 def intent_detection_agent(state: dict, config: RunnableConfig | None = None) -> dict:
     """
-    Detects whether the rainfall query is DAILY or MONTHLY.
+    Detects whether the rainfall query is DAILY or MONTHLY and extracts number of days/months.
     """
 
     # ---- 1. Validate user_query ----
@@ -44,7 +44,7 @@ def intent_detection_agent(state: dict, config: RunnableConfig | None = None) ->
     logger.info(f"IntentDetectionAgent running for query: {user_query}")
 
     # ---- 2. Prompt engineering ----
-    system_prompt = ("""
+    system_prompt = ("""" 
 You are a professional Weather Intent Classifier. 
 Your job is to determine:
 - Whether the query requires a DAILY or MONTHLY forecast.
@@ -90,10 +90,7 @@ Return ONLY:
 - Base all decisions strictly on the user query.
 
 # TASK
-Read the user’s query and return the correct JSON following all rules.
-"""
-
-)
+Read the user’s query and return the correct JSON following all rules.""")
 
     user_prompt = f"User Query: {user_query}"
 
@@ -118,6 +115,8 @@ Read the user’s query and return the correct JSON following all rules.
 
     # ---- 4. Parse Model Output Safely ----
     intent_mode = "daily"
+    days = None
+    months = None
     confidence = 0.5
     explanation = "Fallback default applied."
 
@@ -125,6 +124,8 @@ Read the user’s query and return the correct JSON following all rules.
         parsed = json.loads(raw_output)
 
         intent_mode = parsed.get("mode", "daily").lower()
+        days = parsed.get("days")
+        months = parsed.get("months")
         confidence = float(parsed.get("confidence", 0.5))
         explanation = parsed.get("explanation", "Model explanation missing.")
 
@@ -135,10 +136,14 @@ Read the user’s query and return the correct JSON following all rules.
         lower_q = user_query.lower()
         if "month" in lower_q:
             intent_mode = "monthly"
+            months = 1
+            days = None
             confidence = 0.7
             explanation = "Fallback keyword match: 'month'"
         else:
             intent_mode = "daily"
+            days = 7
+            months = None
             confidence = 0.6
             explanation = "Fallback keyword match: daily terms"
 
@@ -146,16 +151,20 @@ Read the user’s query and return the correct JSON following all rules.
     if intent_mode not in ["daily", "monthly"]:
         logger.warning(f"Unexpected intent: {intent_mode}. Defaulting to daily.")
         intent_mode = "daily"
+        days = 7
+        months = None
         confidence = 0.5
         explanation = "Invalid mode returned — default applied."
 
-    logger.info(f"Intent classified: {intent_mode.upper()} ({confidence})")
+    logger.info(f"Intent classified: {intent_mode.upper()} ({confidence}) | days={days} | months={months}")
 
     # ---- 6. Return Updated State ----
     return {
         **state,
         "intent": {
             "mode": intent_mode,
+            "days": days,
+            "months": months,
             "confidence": confidence,
             "explanation": explanation
         }
