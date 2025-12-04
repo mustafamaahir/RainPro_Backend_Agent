@@ -111,8 +111,8 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
 
         logger.info(f"📁 Model path: {daily_model_path if mode == 'daily' else monthly_model_path}")
 
-        latitude = intent.get("latitude", 6.5833)
-        longitude = intent.get("longitude", 3.983)
+        # latitude = intent.get("latitude", 6.5833)
+        # longitude = intent.get("longitude", 3.983)
 
         if mode == "daily":
             logger.info("🌤️ Starting DAILY prediction...")
@@ -222,7 +222,7 @@ def model_prediction_agent(state: Dict[str, Any], config: RunnableConfig | None 
                 return {**state, "error": f"Failed to load monthly scaler: {e}"}
 
             forecasts = []
-            months = int(intent.get("months", 6))
+            months = int(intent.get("months", 1))
             logger.info(f"🔢 Forecasting for {months} months")
 
             # Ensure shapes are correct

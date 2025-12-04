@@ -44,7 +44,7 @@ def intent_detection_agent(state: dict, config: RunnableConfig | None = None) ->
     logger.info(f"IntentDetectionAgent running for query: {user_query}")
 
     # ---- 2. Prompt engineering ----
-    system_prompt = (""""
+    system_prompt = ("""
 You are a professional Weather Intent Classifier. 
 Your job is to determine:
 - Whether the query requires a DAILY or MONTHLY forecast.
@@ -90,7 +90,9 @@ Return ONLY:
 - Base all decisions strictly on the user query.
 
 # TASK
-Read the user’s query and return the correct JSON following all rules."""
+Read the user’s query and return the correct JSON following all rules.
+"""
+
 )
 
     user_prompt = f"User Query: {user_query}"
