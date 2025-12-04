@@ -49,9 +49,10 @@ def forecast_publisher_agent(state: Dict[str, Any], config=None) -> Dict[str, An
                 logger.info(f"📊 Data: {forecast_data}")
 
                 response = client.post(
-                    endpoint,
-                    json={"root": forecast_data},
-                    headers={"Content-Type": "application/json"}
+                            endpoint,
+                            json=forecast_data,  # ✅ send raw list
+                            headers={"Content-Type": "application/json"}
+)
                 )
 
                 if response.status_code in [200, 201]:
